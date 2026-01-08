@@ -1,5 +1,29 @@
 # Tasks - Personal Productivity App
 
+## Pre-Task Checklist
+Before starting any task, review these files:
+- [ ] `docs/guidelines.md` - Design and technical principles (must adhere)
+- [ ] `docs/issues.md` - Check for related past issues
+- [ ] `replit.md` - Current architecture and state
+
+## Post-Task Checklist
+After completing a task:
+- [ ] Update `docs/transcript.md` - Add entry with timestamp, checkpoint/commit ID, summary
+- [ ] Update `docs/user-guide.md` - If user-facing features changed
+- [ ] Update `docs/guidelines.md` - If new principles were established
+- [ ] Update `docs/issues.md` - If issues were diagnosed and resolved
+- [ ] Update `replit.md` - If architecture or data model changed
+
+## Documentation Files
+| File | Purpose | Update Frequency |
+|------|---------|------------------|
+| `docs/guidelines.md` | Design and technical principles | When principles established |
+| `docs/issues.md` | Issue log with diagnosis and resolution | When issues resolved |
+| `docs/transcript.md` | Reverse chronological session history | After each significant change |
+| `docs/user-guide.md` | User documentation with step-by-step guides | When features change |
+
+---
+
 ## Overview
 A personal productivity web app focused on managing tasks across life domains. Built with React, Express, and in-memory storage.
 
@@ -10,6 +34,8 @@ v0.1 - Domains & Tasks Core implementation complete with:
 - Multiple sort modes (manual, due date, scheduled, priority, effort, complexity, created)
 - Filter by status (open, completed, archived)
 - Dark/light theme toggle
+- Drag-and-drop task reordering (within and across domains)
+- Shadcn date pickers for due date and scheduled date
 
 ## Architecture
 
@@ -18,9 +44,12 @@ v0.1 - Domains & Tasks Core implementation complete with:
 - **Styling**: Tailwind CSS with Shadcn UI components
 - **State**: TanStack Query for server state
 - **Routing**: Wouter
+- **Drag-and-Drop**: dnd-kit
 - **Key Components**:
   - `pages/tasks.tsx` - Main tasks page with domain grouping
   - `components/task-row.tsx` - Individual task display with metadata chips
+  - `components/sortable-task-row.tsx` - Draggable task row wrapper
+  - `components/droppable-domain.tsx` - Drop target for domain sections
   - `components/domain-header.tsx` - Domain section header with task count
   - `components/filter-sort-bar.tsx` - Filter and sort controls
   - `components/inline-task-form.tsx` - Inline task creation per domain
@@ -54,7 +83,8 @@ v0.1 - Domains & Tasks Core implementation complete with:
 
 ### Task
 - id, userId, domainId, title, status (open|completed|archived)
-- Optional: priority (1-5), effortPoints (1-8), complexity (1-5), scheduledDate, dueDate
+- Required: priority (1-3), effortPoints (1-3), complexity (1-3) - all default to 2
+- Optional: scheduledDate, dueDate
 - domainSortOrder, createdAt, updatedAt, completedAt, archivedAt
 
 ## Running the App
