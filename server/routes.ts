@@ -185,12 +185,22 @@ export async function registerRoutes(
   app.post("/api/domains/:domainId/tasks/reorder", async (req, res) => {
     try {
       const { domainId } = req.params;
-      const { ordered_task_ids } = req.body;
-      if (!Array.isArray(ordered_task_ids)) {
-        return res.status(400).json({ error: "ordered_task_ids must be an array" });
+      const { taskId, newIndex, ordered_task_ids } = req.body;
+
+      if (taskId !== undefined && newIndex !== undefined) {
+        const task = await storage.moveTask(taskId, domainId, newIndex);
+        if (!task) {
+          return res.status(404).json({ error: "Task not found or not open" });
+        }
+        return res.json(task);
       }
-      await storage.reorderTasks(domainId, ordered_task_ids);
-      res.json({ success: true });
+
+      if (Array.isArray(ordered_task_ids)) {
+        await storage.reorderTasks(domainId, ordered_task_ids);
+        return res.json({ success: true });
+      }
+
+      return res.status(400).json({ error: "Either taskId+newIndex or ordered_task_ids is required" });
     } catch (error) {
       res.status(500).json({ error: "Failed to reorder tasks" });
     }

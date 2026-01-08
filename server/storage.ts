@@ -45,6 +45,7 @@ export interface IStorage {
   archiveTask(id: string): Promise<Task | undefined>;
   restoreTask(id: string): Promise<Task | undefined>;
   reorderTasks(domainId: string, orderedIds: string[]): Promise<void>;
+  moveTask(taskId: string, newDomainId: string, newIndex: number): Promise<Task | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -301,10 +302,10 @@ export class MemStorage implements IStorage {
       userId: task.userId,
       domainId: task.domainId,
       title: task.title,
-      status: task.status ?? "open",
-      priority: task.priority ?? null,
-      effortPoints: task.effortPoints ?? null,
-      complexity: task.complexity ?? null,
+      status: "open",
+      priority: task.priority ?? 2,
+      effortPoints: task.effortPoints ?? 2,
+      complexity: task.complexity ?? 2,
       scheduledDate: task.scheduledDate ?? null,
       dueDate: task.dueDate ?? null,
       domainSortOrder: maxOrder + 1,
@@ -425,6 +426,72 @@ export class MemStorage implements IStorage {
         });
       }
     });
+  }
+
+  async moveTask(taskId: string, newDomainId: string, newIndex: number): Promise<Task | undefined> {
+    const task = this.tasks.get(taskId);
+    if (!task || task.status !== "open") return undefined;
+
+    const oldDomainId = task.domainId;
+    const now = new Date();
+    const clampedIndex = Math.max(0, newIndex);
+
+    if (oldDomainId === newDomainId) {
+      const domainTasks = Array.from(this.tasks.values())
+        .filter((t) => t.domainId === newDomainId && t.status === "open")
+        .sort((a, b) => a.domainSortOrder - b.domainSortOrder);
+
+      const oldIndex = domainTasks.findIndex((t) => t.id === taskId);
+      if (oldIndex === -1) return undefined;
+
+      domainTasks.splice(oldIndex, 1);
+      const targetIndex = Math.min(clampedIndex, domainTasks.length);
+      domainTasks.splice(targetIndex, 0, task);
+
+      domainTasks.forEach((t, index) => {
+        this.tasks.set(t.id, {
+          ...this.tasks.get(t.id)!,
+          domainSortOrder: index,
+          updatedAt: now,
+        });
+      });
+    } else {
+      const oldDomainTasks = Array.from(this.tasks.values())
+        .filter((t) => t.domainId === oldDomainId && t.status === "open" && t.id !== taskId)
+        .sort((a, b) => a.domainSortOrder - b.domainSortOrder);
+
+      oldDomainTasks.forEach((t, index) => {
+        this.tasks.set(t.id, {
+          ...this.tasks.get(t.id)!,
+          domainSortOrder: index,
+          updatedAt: now,
+        });
+      });
+
+      const newDomainTasks = Array.from(this.tasks.values())
+        .filter((t) => t.domainId === newDomainId && t.status === "open")
+        .sort((a, b) => a.domainSortOrder - b.domainSortOrder);
+
+      const targetIndex = Math.min(clampedIndex, newDomainTasks.length);
+
+      newDomainTasks.forEach((t, index) => {
+        const newOrder = index >= targetIndex ? index + 1 : index;
+        this.tasks.set(t.id, {
+          ...this.tasks.get(t.id)!,
+          domainSortOrder: newOrder,
+          updatedAt: now,
+        });
+      });
+
+      this.tasks.set(taskId, {
+        ...task,
+        domainId: newDomainId,
+        domainSortOrder: targetIndex,
+        updatedAt: now,
+      });
+    }
+
+    return this.tasks.get(taskId);
   }
 }
 
