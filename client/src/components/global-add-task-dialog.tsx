@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Domain, InsertTask } from "@shared/schema";
 
 interface GlobalAddTaskDialogProps {
@@ -32,9 +33,9 @@ export function GlobalAddTaskDialog({
 }: GlobalAddTaskDialogProps) {
   const [title, setTitle] = useState("");
   const [domainId, setDomainId] = useState("");
-  const [priority, setPriority] = useState<string>("");
-  const [effortPoints, setEffortPoints] = useState<string>("");
-  const [complexity, setComplexity] = useState<string>("");
+  const [priority, setPriority] = useState("2");
+  const [effortPoints, setEffortPoints] = useState("2");
+  const [complexity, setComplexity] = useState("2");
   const [dueDate, setDueDate] = useState<string>("");
   const [scheduledDate, setScheduledDate] = useState<string>("");
 
@@ -46,9 +47,9 @@ export function GlobalAddTaskDialog({
       title: title.trim(),
       domainId,
       status: "open",
-      priority: priority ? parseInt(priority) : null,
-      effortPoints: effortPoints ? parseInt(effortPoints) : null,
-      complexity: complexity ? parseInt(complexity) : null,
+      priority: parseInt(priority),
+      effortPoints: parseInt(effortPoints),
+      complexity: parseInt(complexity),
       dueDate: dueDate || null,
       scheduledDate: scheduledDate || null,
     });
@@ -60,9 +61,9 @@ export function GlobalAddTaskDialog({
   const resetForm = () => {
     setTitle("");
     setDomainId("");
-    setPriority("");
-    setEffortPoints("");
-    setComplexity("");
+    setPriority("2");
+    setEffortPoints("2");
+    setComplexity("2");
     setDueDate("");
     setScheduledDate("");
   };
@@ -111,47 +112,49 @@ export function GlobalAddTaskDialog({
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="global-priority">Priority (1-5)</Label>
-              <Input
-                id="global-priority"
-                type="number"
-                min="1"
-                max="5"
-                placeholder="1-5"
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                data-testid="input-global-task-priority"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="global-effort">Effort (1-8)</Label>
-              <Input
-                id="global-effort"
-                type="number"
-                min="1"
-                max="8"
-                placeholder="1-8"
-                value={effortPoints}
-                onChange={(e) => setEffortPoints(e.target.value)}
-                data-testid="input-global-task-effort"
-              />
-            </div>
+          <div className="space-y-1.5">
+            <Label>Priority</Label>
+            <ToggleGroup
+              type="single"
+              value={priority}
+              onValueChange={(val) => val && setPriority(val)}
+              className="justify-start"
+              data-testid="toggle-global-task-priority"
+            >
+              <ToggleGroupItem value="1" aria-label="Low priority">1</ToggleGroupItem>
+              <ToggleGroupItem value="2" aria-label="Medium priority">2</ToggleGroupItem>
+              <ToggleGroupItem value="3" aria-label="High priority">3</ToggleGroupItem>
+            </ToggleGroup>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="global-complexity">Complexity (1-5)</Label>
-            <Input
-              id="global-complexity"
-              type="number"
-              min="1"
-              max="5"
-              placeholder="1-5"
+            <Label>Effort</Label>
+            <ToggleGroup
+              type="single"
+              value={effortPoints}
+              onValueChange={(val) => val && setEffortPoints(val)}
+              className="justify-start"
+              data-testid="toggle-global-task-effort"
+            >
+              <ToggleGroupItem value="1" aria-label="Low effort">1</ToggleGroupItem>
+              <ToggleGroupItem value="2" aria-label="Medium effort">2</ToggleGroupItem>
+              <ToggleGroupItem value="3" aria-label="High effort">3</ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Complexity</Label>
+            <ToggleGroup
+              type="single"
               value={complexity}
-              onChange={(e) => setComplexity(e.target.value)}
-              data-testid="input-global-task-complexity"
-            />
+              onValueChange={(val) => val && setComplexity(val)}
+              className="justify-start"
+              data-testid="toggle-global-task-complexity"
+            >
+              <ToggleGroupItem value="1" aria-label="Low complexity">1</ToggleGroupItem>
+              <ToggleGroupItem value="2" aria-label="Medium complexity">2</ToggleGroupItem>
+              <ToggleGroupItem value="3" aria-label="High complexity">3</ToggleGroupItem>
+            </ToggleGroup>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

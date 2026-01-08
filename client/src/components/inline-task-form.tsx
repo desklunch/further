@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { InsertTask } from "@shared/schema";
 
@@ -14,9 +15,9 @@ interface InlineTaskFormProps {
 export function InlineTaskForm({ domainId, onSubmit, onCancel }: InlineTaskFormProps) {
   const [title, setTitle] = useState("");
   const [showMetadata, setShowMetadata] = useState(false);
-  const [priority, setPriority] = useState<string>("");
-  const [effortPoints, setEffortPoints] = useState<string>("");
-  const [complexity, setComplexity] = useState<string>("");
+  const [priority, setPriority] = useState("2");
+  const [effortPoints, setEffortPoints] = useState("2");
+  const [complexity, setComplexity] = useState("2");
   const [dueDate, setDueDate] = useState<string>("");
   const [scheduledDate, setScheduledDate] = useState<string>("");
 
@@ -28,17 +29,17 @@ export function InlineTaskForm({ domainId, onSubmit, onCancel }: InlineTaskFormP
       title: title.trim(),
       domainId,
       status: "open",
-      priority: priority ? parseInt(priority) : null,
-      effortPoints: effortPoints ? parseInt(effortPoints) : null,
-      complexity: complexity ? parseInt(complexity) : null,
+      priority: parseInt(priority),
+      effortPoints: parseInt(effortPoints),
+      complexity: parseInt(complexity),
       dueDate: dueDate || null,
       scheduledDate: scheduledDate || null,
     });
 
     setTitle("");
-    setPriority("");
-    setEffortPoints("");
-    setComplexity("");
+    setPriority("2");
+    setEffortPoints("2");
+    setComplexity("2");
     setDueDate("");
     setScheduledDate("");
   };
@@ -73,60 +74,68 @@ export function InlineTaskForm({ domainId, onSubmit, onCancel }: InlineTaskFormP
         </button>
 
         {showMetadata && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label className="text-sm">Priority (1-5)</Label>
-              <Input
-                type="number"
-                min="1"
-                max="5"
-                placeholder="1-5"
+              <Label className="text-sm">Priority</Label>
+              <ToggleGroup
+                type="single"
                 value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                data-testid="input-task-priority"
-              />
+                onValueChange={(val) => val && setPriority(val)}
+                className="justify-start"
+                data-testid="toggle-task-priority"
+              >
+                <ToggleGroupItem value="1" aria-label="Low priority">1</ToggleGroupItem>
+                <ToggleGroupItem value="2" aria-label="Medium priority">2</ToggleGroupItem>
+                <ToggleGroupItem value="3" aria-label="High priority">3</ToggleGroupItem>
+              </ToggleGroup>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm">Effort (1-8)</Label>
-              <Input
-                type="number"
-                min="1"
-                max="8"
-                placeholder="1-8"
+              <Label className="text-sm">Effort</Label>
+              <ToggleGroup
+                type="single"
                 value={effortPoints}
-                onChange={(e) => setEffortPoints(e.target.value)}
-                data-testid="input-task-effort"
-              />
+                onValueChange={(val) => val && setEffortPoints(val)}
+                className="justify-start"
+                data-testid="toggle-task-effort"
+              >
+                <ToggleGroupItem value="1" aria-label="Low effort">1</ToggleGroupItem>
+                <ToggleGroupItem value="2" aria-label="Medium effort">2</ToggleGroupItem>
+                <ToggleGroupItem value="3" aria-label="High effort">3</ToggleGroupItem>
+              </ToggleGroup>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm">Complexity (1-5)</Label>
-              <Input
-                type="number"
-                min="1"
-                max="5"
-                placeholder="1-5"
+              <Label className="text-sm">Complexity</Label>
+              <ToggleGroup
+                type="single"
                 value={complexity}
-                onChange={(e) => setComplexity(e.target.value)}
-                data-testid="input-task-complexity"
-              />
+                onValueChange={(val) => val && setComplexity(val)}
+                className="justify-start"
+                data-testid="toggle-task-complexity"
+              >
+                <ToggleGroupItem value="1" aria-label="Low complexity">1</ToggleGroupItem>
+                <ToggleGroupItem value="2" aria-label="Medium complexity">2</ToggleGroupItem>
+                <ToggleGroupItem value="3" aria-label="High complexity">3</ToggleGroupItem>
+              </ToggleGroup>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Due Date</Label>
-              <Input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                data-testid="input-task-due-date"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Scheduled</Label>
-              <Input
-                type="date"
-                value={scheduledDate}
-                onChange={(e) => setScheduledDate(e.target.value)}
-                data-testid="input-task-scheduled-date"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-sm">Due Date</Label>
+                <Input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  data-testid="input-task-due-date"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Scheduled</Label>
+                <Input
+                  type="date"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  data-testid="input-task-scheduled-date"
+                />
+              </div>
             </div>
           </div>
         )}

@@ -59,11 +59,8 @@ export const tasks = pgTable("tasks", {
   archivedAt: timestamp("archived_at"),
 });
 
-const nullableInt = (min: number, max: number) =>
-  z.union([
-    z.coerce.number().int().min(min).max(max),
-    z.null(),
-  ]).optional().transform((val) => val ?? null);
+const requiredInt = (min: number, max: number, defaultVal: number) =>
+  z.coerce.number().int().min(min).max(max).default(defaultVal);
 
 const nullableString = z.union([z.string(), z.null()]).optional().transform((val) => val || null);
 
@@ -77,9 +74,9 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
 }).extend({
   title: z.string().min(1, "Title is required"),
   domainId: z.string().min(1, "Domain is required"),
-  priority: nullableInt(1, 5),
-  effortPoints: nullableInt(1, 8),
-  complexity: nullableInt(1, 5),
+  priority: requiredInt(1, 3, 2),
+  effortPoints: requiredInt(1, 3, 2),
+  complexity: requiredInt(1, 3, 2),
   scheduledDate: nullableString,
   dueDate: nullableString,
 });
@@ -90,9 +87,9 @@ export type Task = typeof tasks.$inferSelect;
 export const updateTaskSchema = z.object({
   title: z.string().min(1).optional(),
   domainId: z.string().min(1).optional(),
-  priority: nullableInt(1, 5),
-  effortPoints: nullableInt(1, 8),
-  complexity: nullableInt(1, 5),
+  priority: z.coerce.number().int().min(1).max(3).optional(),
+  effortPoints: z.coerce.number().int().min(1).max(3).optional(),
+  complexity: z.coerce.number().int().min(1).max(3).optional(),
   scheduledDate: nullableString,
   dueDate: nullableString,
 });
