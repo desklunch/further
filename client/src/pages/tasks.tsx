@@ -13,7 +13,13 @@ import {
   DragEndEvent,
   DragOverEvent,
 } from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { AppHeader } from "@/components/app-header";
 import { FilterSortBar } from "@/components/filter-sort-bar";
 import { DomainHeader } from "@/components/domain-header";
@@ -32,6 +38,71 @@ interface ReorderPayload {
   newIndex: number;
 }
 
+type DragItemType = "task" | "domain";
+
+interface SortableDomainSectionProps {
+  domain: Domain;
+  taskCount: number;
+  showDragHandle: boolean;
+  onAddTask: (domainId: string) => void;
+  onRename: (domainId: string, newName: string) => void;
+  children: React.ReactNode;
+}
+
+function SortableDomainSection({ 
+  domain, 
+  taskCount, 
+  showDragHandle,
+  onAddTask, 
+  onRename, 
+  children 
+}: SortableDomainSectionProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ 
+    id: `domain-sort-${domain.id}`,
+    data: { type: "domain", domain }
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style}
+      className="group"
+      data-testid={`domain-section-${domain.id}`}
+    >
+      <DomainHeader
+        domain={domain}
+        taskCount={taskCount}
+        onAddTask={onAddTask}
+        onRename={onRename}
+        showDragHandle={showDragHandle}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
+      {children}
+    </div>
+  );
+}
+
+function DomainHeaderOverlay({ domain }: { domain: Domain }) {
+  return (
+    <div className="rounded-md border bg-muted/90 px-4 py-3 shadow-lg backdrop-blur-sm">
+      <span className="text-lg font-semibold">{domain.name}</span>
+    </div>
+  );
+}
+
 export default function TasksPage() {
   const { toast } = useToast();
   const [filter, setFilter] = useState<TaskStatus>("open");
@@ -40,9 +111,12 @@ export default function TasksPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showGlobalAddDialog, setShowGlobalAddDialog] = useState(false);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [activeDomain, setActiveDomain] = useState<Domain | null>(null);
   const [overDomainId, setOverDomainId] = useState<string | null>(null);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(new Set());
   const [optimisticTasks, setOptimisticTasks] = useState<Task[] | null>(null);
+  const [optimisticDomains, setOptimisticDomains] = useState<Domain[] | null>(null);
+  const [dragItemType, setDragItemType] = useState<DragItemType | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -52,9 +126,11 @@ export default function TasksPage() {
     })
   );
 
-  const { data: domains = [], isLoading: domainsLoading } = useQuery<Domain[]>({
+  const { data: serverDomains = [], isLoading: domainsLoading } = useQuery<Domain[]>({
     queryKey: ["/api/domains"],
   });
+
+  const domains = optimisticDomains ?? serverDomains;
 
   const { data: serverTasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks", { status: filter, sort: sortMode }],
@@ -93,6 +169,33 @@ export default function TasksPage() {
     },
     onError: () => {
       toast({ title: "Failed to update task", variant: "destructive" });
+    },
+  });
+
+  const updateDomainMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: { name?: string; isActive?: boolean } }) => {
+      return apiRequest("PATCH", `/api/domains/${id}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/domains"] });
+      toast({ title: "Domain updated" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update domain", variant: "destructive" });
+    },
+  });
+
+  const reorderDomainsMutation = useMutation({
+    mutationFn: async (orderedDomainIds: string[]) => {
+      return apiRequest("POST", "/api/domains/reorder", { ordered_domain_ids: orderedDomainIds });
+    },
+    onSuccess: () => {
+      setOptimisticDomains(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/domains"] });
+    },
+    onError: () => {
+      setOptimisticDomains(null);
+      toast({ title: "Failed to reorder domains", variant: "destructive" });
     },
   });
 
@@ -173,14 +276,19 @@ export default function TasksPage() {
     },
   });
 
-  const activeDomains = useMemo(
+  const activeDomainsList = useMemo(
     () => domains.filter((d) => d.isActive).sort((a, b) => a.sortOrder - b.sortOrder),
     [domains]
   );
 
+  const domainSortIds = useMemo(
+    () => activeDomainsList.map((d) => `domain-sort-${d.id}`),
+    [activeDomainsList]
+  );
+
   const tasksByDomain = useMemo(() => {
     const grouped: Record<string, Task[]> = {};
-    activeDomains.forEach((d) => {
+    activeDomainsList.forEach((d) => {
       grouped[d.id] = [];
     });
     tasks.forEach((task) => {
@@ -192,7 +300,7 @@ export default function TasksPage() {
       grouped[domainId].sort((a, b) => a.domainSortOrder - b.domainSortOrder);
     });
     return grouped;
-  }, [tasks, activeDomains]);
+  }, [tasks, activeDomainsList]);
 
   const totalTaskCount = tasks.length;
   const showDragHandle = filter === "open" && sortMode === "manual";
@@ -205,8 +313,12 @@ export default function TasksPage() {
     updateTaskMutation.mutate({ id: taskId, updates });
   };
 
+  const handleRenameDomain = (domainId: string, newName: string) => {
+    updateDomainMutation.mutate({ id: domainId, updates: { name: newName } });
+  };
+
   const handleGlobalAddTask = () => {
-    if (activeDomains.length > 0) {
+    if (activeDomainsList.length > 0) {
       setShowGlobalAddDialog(true);
     } else {
       toast({ title: "No domains available", variant: "destructive" });
@@ -215,13 +327,27 @@ export default function TasksPage() {
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const { active } = event;
-    const task = tasks.find((t) => t.id === active.id);
-    if (task) {
-      setActiveTask(task);
+    const activeId = active.id.toString();
+
+    if (activeId.startsWith("domain-sort-")) {
+      const domainId = activeId.replace("domain-sort-", "");
+      const domain = activeDomainsList.find((d) => d.id === domainId);
+      if (domain) {
+        setActiveDomain(domain);
+        setDragItemType("domain");
+      }
+    } else {
+      const task = tasks.find((t) => t.id === activeId);
+      if (task) {
+        setActiveTask(task);
+        setDragItemType("task");
+      }
     }
-  }, [tasks]);
+  }, [tasks, activeDomainsList]);
 
   const handleDragOver = useCallback((event: DragOverEvent) => {
+    if (dragItemType !== "task") return;
+
     const { over } = event;
     if (!over) {
       setOverDomainId(null);
@@ -231,25 +357,54 @@ export default function TasksPage() {
     const overId = over.id.toString();
     if (overId.startsWith("domain-")) {
       setOverDomainId(overId.replace("domain-", ""));
-    } else {
+    } else if (!overId.startsWith("domain-sort-")) {
       const overTask = tasks.find((t) => t.id === overId);
       if (overTask) {
         setOverDomainId(overTask.domainId);
       }
     }
-  }, [tasks]);
+  }, [tasks, dragItemType]);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
+    
     setActiveTask(null);
+    setActiveDomain(null);
     setOverDomainId(null);
+    setDragItemType(null);
 
-    if (!over || !showDragHandle) return;
+    if (!over) return;
 
     const activeId = active.id.toString();
     const overId = over.id.toString();
 
     if (activeId === overId) return;
+
+    if (activeId.startsWith("domain-sort-") && overId.startsWith("domain-sort-")) {
+      const activeDomainId = activeId.replace("domain-sort-", "");
+      const overDomainId = overId.replace("domain-sort-", "");
+      
+      const oldIndex = activeDomainsList.findIndex((d) => d.id === activeDomainId);
+      const newIndex = activeDomainsList.findIndex((d) => d.id === overDomainId);
+
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        const newOrder = arrayMove(activeDomainsList, oldIndex, newIndex);
+        const newDomains = domains.map((d) => {
+          const newIdx = newOrder.findIndex((nd) => nd.id === d.id);
+          if (newIdx !== -1) {
+            return { ...d, sortOrder: newIdx };
+          }
+          return d;
+        });
+        
+        setOptimisticDomains(newDomains);
+        reorderDomainsMutation.mutate(newOrder.map((d) => d.id));
+      }
+      return;
+    }
+
+    if (!showDragHandle) return;
+    if (activeId.startsWith("domain-sort-")) return;
 
     const currentTasks = optimisticTasks ?? serverTasks;
     const activeTaskData = currentTasks.find((t) => t.id === activeId);
@@ -257,7 +412,7 @@ export default function TasksPage() {
 
     const getGroupedTasks = (taskList: Task[]) => {
       const grouped: Record<string, Task[]> = {};
-      activeDomains.forEach((d) => {
+      activeDomainsList.forEach((d) => {
         grouped[d.id] = [];
       });
       taskList.forEach((task) => {
@@ -280,6 +435,8 @@ export default function TasksPage() {
       targetDomainId = overId.replace("domain-", "");
       const domainTasks = currentGrouped[targetDomainId] || [];
       targetIndex = domainTasks.filter((t) => t.id !== activeId).length;
+    } else if (overId.startsWith("domain-sort-")) {
+      return;
     } else {
       const overTask = currentTasks.find((t) => t.id === overId);
       if (!overTask) return;
@@ -352,7 +509,7 @@ export default function TasksPage() {
       newDomainId: targetDomainId,
       newIndex: finalIndex,
     });
-  }, [serverTasks, optimisticTasks, activeDomains, showDragHandle, reorderTaskMutation]);
+  }, [serverTasks, optimisticTasks, activeDomainsList, domains, showDragHandle, reorderTaskMutation, reorderDomainsMutation]);
 
   const isLoading = domainsLoading || tasksLoading;
 
@@ -380,45 +537,50 @@ export default function TasksPage() {
             onDragEnd={handleDragEnd}
           >
             <div className="mx-auto max-w-6xl pb-8" data-testid="task-list-container">
-              {activeDomains.map((domain) => {
-                const domainTasks = tasksByDomain[domain.id] || [];
-                const isAddingHere = addingToDomainId === domain.id;
-                const isOverThisDomain = overDomainId === domain.id;
+              <SortableContext items={domainSortIds} strategy={verticalListSortingStrategy}>
+                {activeDomainsList.map((domain) => {
+                  const domainTasks = tasksByDomain[domain.id] || [];
+                  const isAddingHere = addingToDomainId === domain.id;
+                  const isOverThisDomain = overDomainId === domain.id;
 
-                return (
-                  <div key={domain.id} data-testid={`domain-section-${domain.id}`}>
-                    <DomainHeader
+                  return (
+                    <SortableDomainSection
+                      key={domain.id}
                       domain={domain}
                       taskCount={domainTasks.length}
-                      onAddTask={(id) => setAddingToDomainId(id)}
-                    />
-                    {isAddingHere && (
-                      <InlineTaskForm
-                        domainId={domain.id}
-                        onSubmit={handleAddTask}
-                        onCancel={() => setAddingToDomainId(null)}
-                      />
-                    )}
-                    <DroppableDomain
-                      domainId={domain.id}
-                      tasks={domainTasks}
                       showDragHandle={showDragHandle}
-                      status={filter}
-                      pendingTaskIds={pendingTaskIds}
-                      isOver={isOverThisDomain}
-                      activeTaskId={activeTask?.id}
-                      onComplete={(id) => completeTaskMutation.mutate(id)}
-                      onReopen={(id) => reopenTaskMutation.mutate(id)}
-                      onArchive={(id) => archiveTaskMutation.mutate(id)}
-                      onEdit={setEditingTask}
-                    />
-                  </div>
-                );
-              })}
+                      onAddTask={(id) => setAddingToDomainId(id)}
+                      onRename={handleRenameDomain}
+                    >
+                      {isAddingHere && (
+                        <InlineTaskForm
+                          domainId={domain.id}
+                          onSubmit={handleAddTask}
+                          onCancel={() => setAddingToDomainId(null)}
+                        />
+                      )}
+                      <DroppableDomain
+                        domainId={domain.id}
+                        tasks={domainTasks}
+                        showDragHandle={showDragHandle}
+                        status={filter}
+                        pendingTaskIds={pendingTaskIds}
+                        isOver={isOverThisDomain && dragItemType === "task"}
+                        activeTaskId={activeTask?.id}
+                        onComplete={(id) => completeTaskMutation.mutate(id)}
+                        onReopen={(id) => reopenTaskMutation.mutate(id)}
+                        onArchive={(id) => archiveTaskMutation.mutate(id)}
+                        onEdit={setEditingTask}
+                      />
+                    </SortableDomainSection>
+                  );
+                })}
+              </SortableContext>
             </div>
 
             <DragOverlay dropAnimation={{ duration: 250, easing: "ease" }}>
               {activeTask ? <TaskRowOverlay task={activeTask} /> : null}
+              {activeDomain ? <DomainHeaderOverlay domain={activeDomain} /> : null}
             </DragOverlay>
           </DndContext>
         )}

@@ -8,6 +8,12 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ## 2026-01-08
 
+### Domain Management Features
+- **19:05 UTC** | Checkpoint `pending` | Added domain rename UI: inline edit with pencil icon, save/cancel buttons
+- **19:05 UTC** | Added domain drag-and-drop reorder: SortableDomainSection component, domain headers draggable in manual sort mode
+- **19:05 UTC** | Fixed blur-on-cancel bug: use onMouseDown with preventDefault on save/cancel buttons
+- **19:00 UTC** | User requested: domain rename UI + domain reorder UI from v0.1 PRD gap analysis
+
 ### Documentation System Setup
 - **16:50 UTC** | Checkpoint `pending` | Created documentation system: replit.md directives, user-guide.md, guidelines.md, issues.md, transcript.md
 - **16:50 UTC** | User requested documentation system for AI agent context with 4 files: guidelines, issues, transcript, user-guide
