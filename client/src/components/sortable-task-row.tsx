@@ -5,7 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GripVertical, Pencil, Trash2, Calendar, Zap, BarChart3, Target } from "lucide-react";
-import type { Task, TaskStatus } from "@shared/schema";
+import type { Task, FilterMode } from "@shared/schema";
 
 interface SortableTaskRowProps {
   task: Task;
@@ -14,7 +14,7 @@ interface SortableTaskRowProps {
   onReopen: (taskId: string) => void;
   onArchive: (taskId: string) => void;
   onEdit: (task: Task) => void;
-  status: TaskStatus;
+  filterMode: FilterMode;
   isPending?: boolean;
   isOverlay?: boolean;
 }
@@ -32,13 +32,13 @@ export function SortableTaskRow({
   onReopen,
   onArchive,
   onEdit,
-  status,
+  filterMode,
   isPending = false,
   isOverlay = false,
 }: SortableTaskRowProps) {
   const [isHovered, setIsHovered] = useState(false);
   const isCompleted = task.status === "completed";
-  const isArchived = task.status === "archived";
+  const isArchived = task.archivedAt !== null;
 
   const {
     attributes,
@@ -173,7 +173,7 @@ export function SortableTaskRow({
         >
           <Pencil className="h-4 w-4" />
         </Button>
-        {status !== "archived" && (
+        {filterMode !== "archived" && (
           <Button
             variant="ghost"
             size="icon"

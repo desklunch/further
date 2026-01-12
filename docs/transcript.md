@@ -8,8 +8,14 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ## 2026-01-08
 
+### Archive as Flag (Not Status)
+- **17:25 UTC** | Checkpoint `pending` | Refactored archive: status now only "open"|"completed", archive tracked via archivedAt
+- **17:25 UTC** | Updated filter options: All (default), Open, Completed, Archived
+- **17:25 UTC** | Updated components: FilterSortBar, DroppableDomain, SortableTaskRow, EmptyState
+- **17:20 UTC** | User requested: archive should preserve task's open/completed status
+
 ### Domain Management Features
-- **19:05 UTC** | Checkpoint `pending` | Added domain rename UI: inline edit with pencil icon, save/cancel buttons
+- **19:05 UTC** | Checkpoint `db70722c` | Added domain rename UI: inline edit with pencil icon, save/cancel buttons
 - **19:05 UTC** | Added domain drag-and-drop reorder: SortableDomainSection component, domain headers draggable in manual sort mode
 - **19:05 UTC** | Fixed blur-on-cancel bug: use onMouseDown with preventDefault on save/cancel buttons
 - **19:00 UTC** | User requested: domain rename UI + domain reorder UI from v0.1 PRD gap analysis

@@ -30,7 +30,7 @@ import { TaskEditDrawer } from "@/components/task-edit-drawer";
 import { GlobalAddTaskDialog } from "@/components/global-add-task-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { TasksLoadingSkeleton } from "@/components/loading-skeleton";
-import type { Domain, Task, TaskStatus, SortMode, InsertTask, UpdateTask } from "@shared/schema";
+import type { Domain, Task, FilterMode, SortMode, InsertTask, UpdateTask } from "@shared/schema";
 
 interface ReorderPayload {
   taskId: string;
@@ -105,7 +105,7 @@ function DomainHeaderOverlay({ domain }: { domain: Domain }) {
 
 export default function TasksPage() {
   const { toast } = useToast();
-  const [filter, setFilter] = useState<TaskStatus>("open");
+  const [filter, setFilter] = useState<FilterMode>("all");
   const [sortMode, setSortMode] = useState<SortMode>("manual");
   const [addingToDomainId, setAddingToDomainId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -133,9 +133,9 @@ export default function TasksPage() {
   const domains = optimisticDomains ?? serverDomains;
 
   const { data: serverTasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
-    queryKey: ["/api/tasks", { status: filter, sort: sortMode }],
+    queryKey: ["/api/tasks", { filter, sort: sortMode }],
     queryFn: async () => {
-      const res = await fetch(`/api/tasks?status=${filter}&sort=${sortMode}`, {
+      const res = await fetch(`/api/tasks?filter=${filter}&sort=${sortMode}`, {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to fetch tasks");
@@ -526,8 +526,8 @@ export default function TasksPage() {
       <main className="flex-1">
         {isLoading ? (
           <TasksLoadingSkeleton />
-        ) : totalTaskCount === 0 && filter !== "open" ? (
-          <EmptyState status={filter} />
+        ) : totalTaskCount === 0 ? (
+          <EmptyState filterMode={filter} onAddTask={handleGlobalAddTask} />
         ) : (
           <DndContext
             sensors={sensors}
@@ -563,7 +563,7 @@ export default function TasksPage() {
                         domainId={domain.id}
                         tasks={domainTasks}
                         showDragHandle={showDragHandle}
-                        status={filter}
+                        filterMode={filter}
                         pendingTaskIds={pendingTaskIds}
                         isOver={isOverThisDomain && dragItemType === "task"}
                         activeTaskId={activeTask?.id}

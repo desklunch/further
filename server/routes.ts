@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertTaskSchema, updateTaskSchema, taskStatusEnum, sortModeEnum } from "@shared/schema";
+import { insertTaskSchema, updateTaskSchema, filterModeEnum, sortModeEnum } from "@shared/schema";
 import { z } from "zod";
 
 const DEFAULT_USER_ID = "default-user";
@@ -67,16 +67,16 @@ export async function registerRoutes(
 
   app.get("/api/tasks", async (req, res) => {
     try {
-      const statusParam = req.query.status as string || "open";
+      const filterParam = req.query.filter as string || "all";
       const sortParam = req.query.sort as string || "manual";
 
-      const statusResult = z.enum(taskStatusEnum).safeParse(statusParam);
+      const filterResult = z.enum(filterModeEnum).safeParse(filterParam);
       const sortResult = z.enum(sortModeEnum).safeParse(sortParam);
 
-      const status = statusResult.success ? statusResult.data : "open";
+      const filter = filterResult.success ? filterResult.data : "all";
       const sort = sortResult.success ? sortResult.data : "manual";
 
-      const tasks = await storage.getTasks(DEFAULT_USER_ID, status, sort);
+      const tasks = await storage.getTasks(DEFAULT_USER_ID, filter, sort);
       res.json(tasks);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch tasks" });

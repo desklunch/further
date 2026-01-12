@@ -16,8 +16,11 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
-export const taskStatusEnum = ["open", "completed", "archived"] as const;
+export const taskStatusEnum = ["open", "completed"] as const;
 export type TaskStatus = (typeof taskStatusEnum)[number];
+
+export const filterModeEnum = ["all", "open", "completed", "archived"] as const;
+export type FilterMode = (typeof filterModeEnum)[number];
 
 export const sortModeEnum = ["manual", "due_date", "scheduled_date", "priority", "effort", "complexity", "created"] as const;
 export type SortMode = (typeof sortModeEnum)[number];

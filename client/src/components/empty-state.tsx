@@ -1,19 +1,25 @@
 import { CheckCircle2, Archive, ListTodo } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { TaskStatus } from "@shared/schema";
+import type { FilterMode } from "@shared/schema";
 
 interface EmptyStateProps {
-  status: TaskStatus;
+  filterMode: FilterMode;
   onAddTask?: () => void;
 }
 
-export function EmptyState({ status, onAddTask }: EmptyStateProps) {
-  const content = {
+export function EmptyState({ filterMode, onAddTask }: EmptyStateProps) {
+  const content: Record<FilterMode, { icon: typeof ListTodo; title: string; description: string; action: string | null }> = {
+    all: {
+      icon: ListTodo,
+      title: "No tasks yet",
+      description: "Create a task to get started with your productivity journey.",
+      action: "Add your first task",
+    },
     open: {
       icon: ListTodo,
       title: "No open tasks",
-      description: "Create a task to get started with your productivity journey.",
-      action: "Add your first task",
+      description: "All tasks are completed or archived.",
+      action: "Add a new task",
     },
     completed: {
       icon: CheckCircle2,
@@ -24,12 +30,12 @@ export function EmptyState({ status, onAddTask }: EmptyStateProps) {
     archived: {
       icon: Archive,
       title: "No archived tasks",
-      description: "Archived tasks will appear here when you delete them.",
+      description: "Archived tasks will appear here.",
       action: null,
     },
   };
 
-  const { icon: Icon, title, description, action } = content[status];
+  const { icon: Icon, title, description, action } = content[filterMode];
 
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center" data-testid="empty-state">

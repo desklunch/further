@@ -66,11 +66,12 @@ Tasks organizes your to-dos into 9 life domains: Body, Space, Mind, Plan, Connec
 
 ## 3. Organizing Tasks
 
-### 3.1 Filtering by Status
+### 3.1 Filtering Tasks
 Use the filter bar at the top to show:
-- **Open** - Active tasks you're working on (default)
+- **All** - Both open and completed tasks (default view)
+- **Open** - Active tasks you're working on
 - **Completed** - Tasks you've finished
-- **Archived** - Tasks you've hidden away
+- **Archived** - Tasks you've hidden away (preserves their open/completed status)
 
 ### 3.2 Sorting Tasks
 Use the sort dropdown to order tasks by:

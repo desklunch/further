@@ -32,7 +32,7 @@ v0.1 - Domains & Tasks Core implementation complete with:
 - Domain management with 9 seed domains (Body, Space, Mind, Plan, Connect, Attack, Create, Learn, Manage)
 - Task CRUD with completion, archival, and restoration
 - Multiple sort modes (manual, due date, scheduled, priority, effort, complexity, created)
-- Filter by status (open, completed, archived)
+- Filter modes: All (open+completed), Open, Completed, Archived
 - Dark/light theme toggle
 - Drag-and-drop task reordering (within and across domains)
 - Shadcn date pickers for due date and scheduled date
@@ -82,10 +82,11 @@ v0.1 - Domains & Tasks Core implementation complete with:
 - id, userId, name, sortOrder, isActive, createdAt, updatedAt
 
 ### Task
-- id, userId, domainId, title, status (open|completed|archived)
+- id, userId, domainId, title, status (open|completed)
 - Required: priority (1-3), effortPoints (1-3), complexity (1-3) - all default to 2
 - Optional: scheduledDate, dueDate
 - domainSortOrder, createdAt, updatedAt, completedAt, archivedAt
+- Archive is tracked via archivedAt timestamp (not status)
 
 ## Running the App
 ```bash

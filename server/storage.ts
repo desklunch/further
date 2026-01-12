@@ -7,7 +7,7 @@ import type {
   Task,
   InsertTask,
   UpdateTask,
-  TaskStatus,
+  FilterMode,
   SortMode,
 } from "@shared/schema";
 
@@ -36,7 +36,7 @@ export interface IStorage {
   updateDomain(id: string, updates: Partial<InsertDomain>): Promise<Domain | undefined>;
   reorderDomains(userId: string, orderedIds: string[]): Promise<void>;
   
-  getTasks(userId: string, status: TaskStatus, sortMode: SortMode): Promise<Task[]>;
+  getTasks(userId: string, filterMode: FilterMode, sortMode: SortMode): Promise<Task[]>;
   getTask(id: string): Promise<Task | undefined>;
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: string, updates: UpdateTask): Promise<Task | undefined>;
@@ -156,12 +156,25 @@ export class MemStorage implements IStorage {
 
   async getTasks(
     userId: string,
-    status: TaskStatus,
+    filterMode: FilterMode,
     sortMode: SortMode
   ): Promise<Task[]> {
-    const filtered = Array.from(this.tasks.values()).filter(
-      (t) => t.userId === userId && t.status === status
-    );
+    const filtered = Array.from(this.tasks.values()).filter((t) => {
+      if (t.userId !== userId) return false;
+      const isArchived = t.archivedAt !== null;
+      switch (filterMode) {
+        case "all":
+          return !isArchived;
+        case "open":
+          return t.status === "open" && !isArchived;
+        case "completed":
+          return t.status === "completed" && !isArchived;
+        case "archived":
+          return isArchived;
+        default:
+          return !isArchived;
+      }
+    });
 
     const domains = await this.getDomains(userId);
     const domainOrderMap = new Map(domains.map((d) => [d.id, d.sortOrder]));
@@ -377,12 +390,11 @@ export class MemStorage implements IStorage {
 
   async archiveTask(id: string): Promise<Task | undefined> {
     const task = this.tasks.get(id);
-    if (!task || task.status === "archived") return undefined;
+    if (!task || task.archivedAt !== null) return undefined;
 
     const now = new Date();
     const archivedTask: Task = {
       ...task,
-      status: "archived",
       archivedAt: now,
       updatedAt: now,
     };
@@ -392,10 +404,10 @@ export class MemStorage implements IStorage {
 
   async restoreTask(id: string): Promise<Task | undefined> {
     const task = this.tasks.get(id);
-    if (!task || task.status !== "archived") return undefined;
+    if (!task || task.archivedAt === null) return undefined;
 
     const domainTasks = Array.from(this.tasks.values()).filter(
-      (t) => t.domainId === task.domainId && t.status === "open"
+      (t) => t.domainId === task.domainId && t.status === "open" && t.archivedAt === null
     );
     const maxOrder = domainTasks.reduce(
       (max, t) => Math.max(max, t.domainSortOrder),
@@ -405,8 +417,6 @@ export class MemStorage implements IStorage {
     const now = new Date();
     const restoredTask: Task = {
       ...task,
-      status: "open",
-      completedAt: null,
       archivedAt: null,
       domainSortOrder: maxOrder + 1,
       updatedAt: now,

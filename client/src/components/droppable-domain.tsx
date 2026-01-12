@@ -1,13 +1,13 @@
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { SortableTaskRow } from "./sortable-task-row";
-import type { Task, TaskStatus } from "@shared/schema";
+import type { Task, FilterMode } from "@shared/schema";
 
 interface DroppableDomainProps {
   domainId: string;
   tasks: Task[];
   showDragHandle: boolean;
-  status: TaskStatus;
+  filterMode: FilterMode;
   pendingTaskIds: Set<string>;
   onComplete: (taskId: string) => void;
   onReopen: (taskId: string) => void;
@@ -21,7 +21,7 @@ export function DroppableDomain({
   domainId,
   tasks,
   showDragHandle,
-  status,
+  filterMode,
   pendingTaskIds,
   onComplete,
   onReopen,
@@ -54,7 +54,7 @@ export function DroppableDomain({
               <SortableTaskRow
                 task={task}
                 showDragHandle={showDragHandle}
-                status={status}
+                filterMode={filterMode}
                 isPending={pendingTaskIds.has(task.id)}
                 onComplete={onComplete}
                 onReopen={onReopen}
