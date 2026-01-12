@@ -1,6 +1,6 @@
 # Session Transcript
 
-Reverse chronological history of significant changes and decisions. Each entry includes timestamp, checkpoint/commit ID, and summary.
+Reverse chronological history of significant changes and decisions. Each entry includes timestamp, checkpoint/commit ID, and summary. Entries should be grouped by day 
 
 > **Note**: This transcript captures significant actions and checkpoints. Full chat history is not retained between sessions.
 
