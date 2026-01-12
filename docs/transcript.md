@@ -8,8 +8,12 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ## 2026-01-08
 
+### Filter Bar Enhancement
+- **17:02 UTC** | Checkpoint `pending` | Added "All" filter option to FilterSortBar, displays open + completed tasks
+- **17:02 UTC** | Created TaskFilter type (all|open|completed|archived), updated schema, routes, storage, and UI components
+
 ### Domain Management Features
-- **19:05 UTC** | Checkpoint `pending` | Added domain rename UI: inline edit with pencil icon, save/cancel buttons
+- **19:05 UTC** | Checkpoint `37675aa` | Added domain rename UI: inline edit with pencil icon, save/cancel buttons
 - **19:05 UTC** | Added domain drag-and-drop reorder: SortableDomainSection component, domain headers draggable in manual sort mode
 - **19:05 UTC** | Fixed blur-on-cancel bug: use onMouseDown with preventDefault on save/cancel buttons
 - **19:00 UTC** | User requested: domain rename UI + domain reorder UI from v0.1 PRD gap analysis

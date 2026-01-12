@@ -7,7 +7,7 @@ import type {
   Task,
   InsertTask,
   UpdateTask,
-  TaskStatus,
+  TaskFilter,
   SortMode,
 } from "@shared/schema";
 
@@ -36,7 +36,7 @@ export interface IStorage {
   updateDomain(id: string, updates: Partial<InsertDomain>): Promise<Domain | undefined>;
   reorderDomains(userId: string, orderedIds: string[]): Promise<void>;
   
-  getTasks(userId: string, status: TaskStatus, sortMode: SortMode): Promise<Task[]>;
+  getTasks(userId: string, filter: TaskFilter, sortMode: SortMode): Promise<Task[]>;
   getTask(id: string): Promise<Task | undefined>;
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: string, updates: UpdateTask): Promise<Task | undefined>;
@@ -156,12 +156,14 @@ export class MemStorage implements IStorage {
 
   async getTasks(
     userId: string,
-    status: TaskStatus,
+    filter: TaskFilter,
     sortMode: SortMode
   ): Promise<Task[]> {
-    const filtered = Array.from(this.tasks.values()).filter(
-      (t) => t.userId === userId && t.status === status
-    );
+    const filtered = Array.from(this.tasks.values()).filter((t) => {
+      if (t.userId !== userId) return false;
+      if (filter === "all") return t.status === "open" || t.status === "completed";
+      return t.status === filter;
+    });
 
     const domains = await this.getDomains(userId);
     const domainOrderMap = new Map(domains.map((d) => [d.id, d.sortOrder]));

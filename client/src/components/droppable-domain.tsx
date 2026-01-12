@@ -1,13 +1,13 @@
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { SortableTaskRow } from "./sortable-task-row";
-import type { Task, TaskStatus } from "@shared/schema";
+import type { Task, TaskFilter } from "@shared/schema";
 
 interface DroppableDomainProps {
   domainId: string;
   tasks: Task[];
   showDragHandle: boolean;
-  status: TaskStatus;
+  status: TaskFilter;
   pendingTaskIds: Set<string>;
   onComplete: (taskId: string) => void;
   onReopen: (taskId: string) => void;
