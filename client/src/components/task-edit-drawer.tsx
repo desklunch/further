@@ -46,9 +46,9 @@ export function TaskEditDrawer({
 }: TaskEditDrawerProps) {
   const [title, setTitle] = useState("");
   const [domainId, setDomainId] = useState("");
-  const [priority, setPriority] = useState("2");
-  const [effortPoints, setEffortPoints] = useState("2");
-  const [complexity, setComplexity] = useState("2");
+  const [priority, setPriority] = useState("1");
+  const [effortPoints, setEffortPoints] = useState("1");
+  const [complexity, setComplexity] = useState("1");
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
 
@@ -56,9 +56,9 @@ export function TaskEditDrawer({
     if (task) {
       setTitle(task.title);
       setDomainId(task.domainId);
-      setPriority((task.priority ?? 2).toString());
-      setEffortPoints((task.effortPoints ?? 2).toString());
-      setComplexity((task.complexity ?? 2).toString());
+      setPriority((task.priority ?? 1).toString());
+      setEffortPoints((task.effortPoints ?? 1).toString());
+      setComplexity((task.complexity ?? 1).toString());
       setDueDate(task.dueDate ? parseISO(task.dueDate) : undefined);
       setScheduledDate(task.scheduledDate ? parseISO(task.scheduledDate) : undefined);
     }

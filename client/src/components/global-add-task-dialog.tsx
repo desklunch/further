@@ -42,9 +42,9 @@ export function GlobalAddTaskDialog({
 }: GlobalAddTaskDialogProps) {
   const [title, setTitle] = useState("");
   const [domainId, setDomainId] = useState("");
-  const [priority, setPriority] = useState("2");
-  const [effortPoints, setEffortPoints] = useState("2");
-  const [complexity, setComplexity] = useState("2");
+  const [priority, setPriority] = useState("1");
+  const [effortPoints, setEffortPoints] = useState("1");
+  const [complexity, setComplexity] = useState("1");
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
 
@@ -70,9 +70,9 @@ export function GlobalAddTaskDialog({
   const resetForm = () => {
     setTitle("");
     setDomainId("");
-    setPriority("2");
-    setEffortPoints("2");
-    setComplexity("2");
+    setPriority("1");
+    setEffortPoints("1");
+    setComplexity("1");
     setDueDate(undefined);
     setScheduledDate(undefined);
   };
