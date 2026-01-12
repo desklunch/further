@@ -1,20 +1,14 @@
-import { CheckCircle2, Archive, ListTodo, Inbox } from "lucide-react";
+import { CheckCircle2, Archive, ListTodo } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { TaskFilter } from "@shared/schema";
+import type { TaskStatus } from "@shared/schema";
 
 interface EmptyStateProps {
-  status: TaskFilter;
+  status: TaskStatus;
   onAddTask?: () => void;
 }
 
 export function EmptyState({ status, onAddTask }: EmptyStateProps) {
-  const content: Record<TaskFilter, { icon: typeof ListTodo; title: string; description: string; action: string | null }> = {
-    all: {
-      icon: Inbox,
-      title: "No tasks",
-      description: "Create a task to get started with your productivity journey.",
-      action: "Add your first task",
-    },
+  const content = {
     open: {
       icon: ListTodo,
       title: "No open tasks",

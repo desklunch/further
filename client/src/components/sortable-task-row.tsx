@@ -5,7 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GripVertical, Pencil, Trash2, Calendar, Zap, BarChart3, Target } from "lucide-react";
-import type { Task, TaskFilter } from "@shared/schema";
+import type { Task, TaskStatus } from "@shared/schema";
 
 interface SortableTaskRowProps {
   task: Task;
@@ -14,7 +14,7 @@ interface SortableTaskRowProps {
   onReopen: (taskId: string) => void;
   onArchive: (taskId: string) => void;
   onEdit: (task: Task) => void;
-  status: TaskFilter;
+  status: TaskStatus;
   isPending?: boolean;
   isOverlay?: boolean;
 }

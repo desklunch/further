@@ -19,9 +19,6 @@ export type User = typeof users.$inferSelect;
 export const taskStatusEnum = ["open", "completed", "archived"] as const;
 export type TaskStatus = (typeof taskStatusEnum)[number];
 
-export const taskFilterEnum = ["all", "open", "completed", "archived"] as const;
-export type TaskFilter = (typeof taskFilterEnum)[number];
-
 export const sortModeEnum = ["manual", "due_date", "scheduled_date", "priority", "effort", "complexity", "created"] as const;
 export type SortMode = (typeof sortModeEnum)[number];
 

@@ -6,17 +6,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { TaskFilter, SortMode } from "@shared/schema";
+import type { TaskStatus, SortMode } from "@shared/schema";
 
 interface FilterSortBarProps {
-  filter: TaskFilter;
+  filter: TaskStatus;
   sortMode: SortMode;
-  onFilterChange: (filter: TaskFilter) => void;
+  onFilterChange: (filter: TaskStatus) => void;
   onSortChange: (sort: SortMode) => void;
 }
 
-const filterOptions: { value: TaskFilter; label: string }[] = [
-  { value: "all", label: "All" },
+const filterOptions: { value: TaskStatus; label: string }[] = [
   { value: "open", label: "Open" },
   { value: "completed", label: "Completed" },
   { value: "archived", label: "Archived" },

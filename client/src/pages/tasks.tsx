@@ -30,7 +30,7 @@ import { TaskEditDrawer } from "@/components/task-edit-drawer";
 import { GlobalAddTaskDialog } from "@/components/global-add-task-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { TasksLoadingSkeleton } from "@/components/loading-skeleton";
-import type { Domain, Task, TaskFilter, SortMode, InsertTask, UpdateTask } from "@shared/schema";
+import type { Domain, Task, TaskStatus, SortMode, InsertTask, UpdateTask } from "@shared/schema";
 
 interface ReorderPayload {
   taskId: string;
@@ -105,7 +105,7 @@ function DomainHeaderOverlay({ domain }: { domain: Domain }) {
 
 export default function TasksPage() {
   const { toast } = useToast();
-  const [filter, setFilter] = useState<TaskFilter>("open");
+  const [filter, setFilter] = useState<TaskStatus>("open");
   const [sortMode, setSortMode] = useState<SortMode>("manual");
   const [addingToDomainId, setAddingToDomainId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
