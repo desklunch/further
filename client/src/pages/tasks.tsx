@@ -28,7 +28,6 @@ import { TaskRowOverlay } from "@/components/sortable-task-row";
 import { InlineTaskForm } from "@/components/inline-task-form";
 import { TaskEditDrawer } from "@/components/task-edit-drawer";
 import { GlobalAddTaskDialog } from "@/components/global-add-task-dialog";
-import { EmptyState } from "@/components/empty-state";
 import { TasksLoadingSkeleton } from "@/components/loading-skeleton";
 import type { Domain, Task, FilterMode, SortMode, InsertTask, UpdateTask } from "@shared/schema";
 
@@ -302,7 +301,6 @@ export default function TasksPage() {
     return grouped;
   }, [tasks, activeDomainsList]);
 
-  const totalTaskCount = tasks.length;
   const showDragHandle = filter === "open" && sortMode === "manual";
 
   const handleAddTask = (task: Omit<InsertTask, "userId">) => {
@@ -526,8 +524,6 @@ export default function TasksPage() {
       <main className="flex-1">
         {isLoading ? (
           <TasksLoadingSkeleton />
-        ) : totalTaskCount === 0 ? (
-          <EmptyState filterMode={filter} onAddTask={handleGlobalAddTask} />
         ) : (
           <DndContext
             sensors={sensors}
