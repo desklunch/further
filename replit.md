@@ -14,6 +14,12 @@ After completing a task:
 - [ ] Update `docs/issues.md` - If issues were diagnosed and resolved
 - [ ] Update `replit.md` - If architecture or data model changed
 
+## Task List Guidelines
+**Always include a documentation task in every task list.** The final task should be:
+- "Update documentation (transcript.md, replit.md, etc.) as needed"
+
+This ensures documentation is never forgotten. Mark it "not applicable" if the change didn't warrant updates, but always include it in the plan.
+
 ## Documentation Files
 | File | Purpose | Update Frequency |
 |------|---------|------------------|

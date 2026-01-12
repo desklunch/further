@@ -6,6 +6,23 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ---
 
+## 2026-01-12
+
+### PostgreSQL Database Integration
+- **18:18 UTC** | Checkpoint `38952117` | Integrated PostgreSQL database for persistent storage
+- **18:18 UTC** | Created server/db.ts for Drizzle ORM connection with pg Pool
+- **18:18 UTC** | Replaced MemStorage with DatabaseStorage class implementing all IStorage methods
+- **18:18 UTC** | Added seedDomainsIfNeeded() to populate 9 default domains on first run
+- **18:18 UTC** | Updated schema defaults: priority/effort/complexity now default to 1 (was 2)
+- **18:17 UTC** | User requested: persistent database storage for tasks and domains
+
+### Task Form Defaults Update
+- **17:30 UTC** | Checkpoint `ba6ec7c9` | Updated default values for priority, effort, complexity from 2 to 1
+- **17:30 UTC** | Updated: inline-task-form, global-add-task-dialog, task-edit-drawer
+- **17:29 UTC** | Checkpoint `f015eb3b` | Removed collapsible from inline task form - all fields always visible
+
+---
+
 ## 2026-01-08
 
 ### Archive as Flag (Not Status)
