@@ -77,9 +77,9 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
 }).extend({
   title: z.string().min(1, "Title is required"),
   domainId: z.string().min(1, "Domain is required"),
-  priority: requiredInt(1, 3, 2),
-  effortPoints: requiredInt(1, 3, 2),
-  complexity: requiredInt(1, 3, 2),
+  priority: requiredInt(1, 3, 1),
+  effortPoints: requiredInt(1, 3, 1),
+  complexity: requiredInt(1, 3, 1),
   scheduledDate: nullableString,
   dueDate: nullableString,
 });

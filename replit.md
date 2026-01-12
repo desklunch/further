@@ -25,7 +25,7 @@ After completing a task:
 ---
 
 ## Overview
-A personal productivity web app focused on managing tasks across life domains. Built with React, Express, and in-memory storage.
+A personal productivity web app focused on managing tasks across life domains. Built with React, Express, and PostgreSQL database.
 
 ## Current State
 v0.1 - Domains & Tasks Core implementation complete with:
@@ -58,7 +58,8 @@ v0.1 - Domains & Tasks Core implementation complete with:
 
 ### Backend (server/)
 - **Framework**: Express.js with TypeScript
-- **Storage**: In-memory storage with seed domains
+- **Database**: PostgreSQL with Drizzle ORM
+- **Storage**: DatabaseStorage class implementing IStorage interface
 - **API Endpoints**:
   - `GET /api/domains` - List all domains
   - `POST /api/domains` - Create domain
@@ -83,7 +84,7 @@ v0.1 - Domains & Tasks Core implementation complete with:
 
 ### Task
 - id, userId, domainId, title, status (open|completed)
-- Required: priority (1-3), effortPoints (1-3), complexity (1-3) - all default to 2
+- Required: priority (1-3), effortPoints (1-3), complexity (1-3) - all default to 1
 - Optional: scheduledDate, dueDate
 - domainSortOrder, createdAt, updatedAt, completedAt, archivedAt
 - Archive is tracked via archivedAt timestamp (not status)

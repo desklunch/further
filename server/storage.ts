@@ -1,4 +1,7 @@
 import { randomUUID } from "crypto";
+import { eq, and, isNull, isNotNull, asc, desc, sql } from "drizzle-orm";
+import { db } from "./db";
+import { domains, tasks, users } from "@shared/schema";
 import type {
   User,
   InsertUser,
@@ -46,141 +49,140 @@ export interface IStorage {
   restoreTask(id: string): Promise<Task | undefined>;
   reorderTasks(domainId: string, orderedIds: string[]): Promise<void>;
   moveTask(taskId: string, newDomainId: string, newIndex: number): Promise<Task | undefined>;
+  
+  seedDomainsIfNeeded(): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-  private domains: Map<string, Domain>;
-  private tasks: Map<string, Task>;
+export class DatabaseStorage implements IStorage {
+  async seedDomainsIfNeeded(): Promise<void> {
+    const existingDomains = await db
+      .select()
+      .from(domains)
+      .where(eq(domains.userId, DEFAULT_USER_ID))
+      .limit(1);
 
-  constructor() {
-    this.users = new Map();
-    this.domains = new Map();
-    this.tasks = new Map();
-    this.seedDomains();
-  }
-
-  private seedDomains(): void {
-    const now = new Date();
-    SEED_DOMAINS.forEach((name, index) => {
-      const id = randomUUID();
-      this.domains.set(id, {
-        id,
-        userId: DEFAULT_USER_ID,
-        name,
-        sortOrder: index,
-        isActive: true,
-        createdAt: now,
-        updatedAt: now,
-      });
-    });
+    if (existingDomains.length === 0) {
+      const now = new Date();
+      for (let i = 0; i < SEED_DOMAINS.length; i++) {
+        await db.insert(domains).values({
+          id: randomUUID(),
+          userId: DEFAULT_USER_ID,
+          name: SEED_DOMAINS[i],
+          sortOrder: i,
+          isActive: true,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
   }
 
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username)).limit(1);
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db
+      .insert(users)
+      .values({ ...insertUser, id })
+      .returning();
     return user;
   }
 
   async getDomains(userId: string): Promise<Domain[]> {
-    return Array.from(this.domains.values())
-      .filter((d) => d.userId === userId)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+    return db
+      .select()
+      .from(domains)
+      .where(eq(domains.userId, userId))
+      .orderBy(asc(domains.sortOrder));
   }
 
   async getDomain(id: string): Promise<Domain | undefined> {
-    return this.domains.get(id);
+    const [domain] = await db.select().from(domains).where(eq(domains.id, id)).limit(1);
+    return domain;
   }
 
   async createDomain(domain: InsertDomain): Promise<Domain> {
     const existingDomains = await this.getDomains(domain.userId);
-    const maxOrder = existingDomains.reduce(
-      (max, d) => Math.max(max, d.sortOrder),
-      -1
-    );
+    const maxOrder = existingDomains.reduce((max, d) => Math.max(max, d.sortOrder), -1);
 
     const id = randomUUID();
     const now = new Date();
-    const newDomain: Domain = {
-      id,
-      userId: domain.userId,
-      name: domain.name,
-      sortOrder: domain.sortOrder ?? maxOrder + 1,
-      isActive: domain.isActive ?? true,
-      createdAt: now,
-      updatedAt: now,
-    };
-    this.domains.set(id, newDomain);
+    const [newDomain] = await db
+      .insert(domains)
+      .values({
+        id,
+        userId: domain.userId,
+        name: domain.name,
+        sortOrder: domain.sortOrder ?? maxOrder + 1,
+        isActive: domain.isActive ?? true,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
     return newDomain;
   }
 
-  async updateDomain(
-    id: string,
-    updates: Partial<InsertDomain>
-  ): Promise<Domain | undefined> {
-    const domain = this.domains.get(id);
-    if (!domain) return undefined;
-
-    const updatedDomain: Domain = {
-      ...domain,
-      ...updates,
-      updatedAt: new Date(),
-    };
-    this.domains.set(id, updatedDomain);
-    return updatedDomain;
+  async updateDomain(id: string, updates: Partial<InsertDomain>): Promise<Domain | undefined> {
+    const [updated] = await db
+      .update(domains)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(domains.id, id))
+      .returning();
+    return updated;
   }
 
   async reorderDomains(userId: string, orderedIds: string[]): Promise<void> {
-    orderedIds.forEach((id, index) => {
-      const domain = this.domains.get(id);
-      if (domain && domain.userId === userId) {
-        this.domains.set(id, {
-          ...domain,
-          sortOrder: index,
-          updatedAt: new Date(),
-        });
-      }
-    });
+    const now = new Date();
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db
+        .update(domains)
+        .set({ sortOrder: i, updatedAt: now })
+        .where(and(eq(domains.id, orderedIds[i]), eq(domains.userId, userId)));
+    }
   }
 
-  async getTasks(
-    userId: string,
-    filterMode: FilterMode,
-    sortMode: SortMode
-  ): Promise<Task[]> {
-    const filtered = Array.from(this.tasks.values()).filter((t) => {
-      if (t.userId !== userId) return false;
-      const isArchived = t.archivedAt !== null;
-      switch (filterMode) {
-        case "all":
-          return !isArchived;
-        case "open":
-          return t.status === "open" && !isArchived;
-        case "completed":
-          return t.status === "completed" && !isArchived;
-        case "archived":
-          return isArchived;
-        default:
-          return !isArchived;
-      }
-    });
+  async getTasks(userId: string, filterMode: FilterMode, sortMode: SortMode): Promise<Task[]> {
+    let condition;
+    switch (filterMode) {
+      case "all":
+        condition = and(eq(tasks.userId, userId), isNull(tasks.archivedAt));
+        break;
+      case "open":
+        condition = and(
+          eq(tasks.userId, userId),
+          eq(tasks.status, "open"),
+          isNull(tasks.archivedAt)
+        );
+        break;
+      case "completed":
+        condition = and(
+          eq(tasks.userId, userId),
+          eq(tasks.status, "completed"),
+          isNull(tasks.archivedAt)
+        );
+        break;
+      case "archived":
+        condition = and(eq(tasks.userId, userId), isNotNull(tasks.archivedAt));
+        break;
+      default:
+        condition = and(eq(tasks.userId, userId), isNull(tasks.archivedAt));
+    }
 
-    const domains = await this.getDomains(userId);
-    const domainOrderMap = new Map(domains.map((d) => [d.id, d.sortOrder]));
+    const allTasks = await db.select().from(tasks).where(condition);
+
+    const userDomains = await this.getDomains(userId);
+    const domainOrderMap = new Map(userDomains.map((d) => [d.id, d.sortOrder]));
 
     const tasksByDomain: Record<string, Task[]> = {};
-    filtered.forEach((task) => {
+    allTasks.forEach((task) => {
       if (!tasksByDomain[task.domainId]) {
         tasksByDomain[task.domainId] = [];
       }
@@ -205,8 +207,8 @@ export class MemStorage implements IStorage {
     return result;
   }
 
-  private sortTasks(tasks: Task[], sortMode: SortMode): Task[] {
-    const sorted = [...tasks];
+  private sortTasks(taskList: Task[], sortMode: SortMode): Task[] {
+    const sorted = [...taskList];
 
     switch (sortMode) {
       case "manual":
@@ -296,150 +298,145 @@ export class MemStorage implements IStorage {
   }
 
   async getTask(id: string): Promise<Task | undefined> {
-    return this.tasks.get(id);
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
+    return task;
   }
 
   async createTask(task: InsertTask): Promise<Task> {
-    const domainTasks = Array.from(this.tasks.values()).filter(
-      (t) => t.domainId === task.domainId && t.status === "open"
-    );
-    const maxOrder = domainTasks.reduce(
-      (max, t) => Math.max(max, t.domainSortOrder),
-      -1
-    );
+    const domainTasks = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.domainId, task.domainId), eq(tasks.status, "open")));
+    const maxOrder = domainTasks.reduce((max, t) => Math.max(max, t.domainSortOrder), -1);
 
     const id = randomUUID();
     const now = new Date();
-    const newTask: Task = {
-      id,
-      userId: task.userId,
-      domainId: task.domainId,
-      title: task.title,
-      status: "open",
-      priority: task.priority ?? 2,
-      effortPoints: task.effortPoints ?? 2,
-      complexity: task.complexity ?? 2,
-      scheduledDate: task.scheduledDate ?? null,
-      dueDate: task.dueDate ?? null,
-      domainSortOrder: maxOrder + 1,
-      createdAt: now,
-      updatedAt: now,
-      completedAt: null,
-      archivedAt: null,
-    };
-    this.tasks.set(id, newTask);
+    const [newTask] = await db
+      .insert(tasks)
+      .values({
+        id,
+        userId: task.userId,
+        domainId: task.domainId,
+        title: task.title,
+        status: "open",
+        priority: task.priority ?? 1,
+        effortPoints: task.effortPoints ?? 1,
+        complexity: task.complexity ?? 1,
+        scheduledDate: task.scheduledDate ?? null,
+        dueDate: task.dueDate ?? null,
+        domainSortOrder: maxOrder + 1,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+        archivedAt: null,
+      })
+      .returning();
     return newTask;
   }
 
   async updateTask(id: string, updates: UpdateTask): Promise<Task | undefined> {
-    const task = this.tasks.get(id);
-    if (!task) return undefined;
+    const existingTask = await this.getTask(id);
+    if (!existingTask) return undefined;
 
-    let domainSortOrder = task.domainSortOrder;
-    
-    if (updates.domainId && updates.domainId !== task.domainId) {
-      const domainTasks = Array.from(this.tasks.values()).filter(
-        (t) => t.domainId === updates.domainId && t.status === "open"
-      );
-      const maxOrder = domainTasks.reduce(
-        (max, t) => Math.max(max, t.domainSortOrder),
-        -1
-      );
+    let domainSortOrder = existingTask.domainSortOrder;
+
+    if (updates.domainId && updates.domainId !== existingTask.domainId) {
+      const domainTasks = await db
+        .select()
+        .from(tasks)
+        .where(and(eq(tasks.domainId, updates.domainId), eq(tasks.status, "open")));
+      const maxOrder = domainTasks.reduce((max, t) => Math.max(max, t.domainSortOrder), -1);
       domainSortOrder = maxOrder + 1;
     }
 
-    const updatedTask: Task = {
-      ...task,
-      ...updates,
-      domainSortOrder,
-      updatedAt: new Date(),
-    };
-    this.tasks.set(id, updatedTask);
-    return updatedTask;
+    const [updated] = await db
+      .update(tasks)
+      .set({
+        ...updates,
+        domainSortOrder,
+        updatedAt: new Date(),
+      })
+      .where(eq(tasks.id, id))
+      .returning();
+    return updated;
   }
 
   async completeTask(id: string): Promise<Task | undefined> {
-    const task = this.tasks.get(id);
+    const task = await this.getTask(id);
     if (!task || task.status !== "open") return undefined;
 
     const now = new Date();
-    const completedTask: Task = {
-      ...task,
-      status: "completed",
-      completedAt: now,
-      updatedAt: now,
-    };
-    this.tasks.set(id, completedTask);
-    return completedTask;
+    const [completed] = await db
+      .update(tasks)
+      .set({ status: "completed", completedAt: now, updatedAt: now })
+      .where(eq(tasks.id, id))
+      .returning();
+    return completed;
   }
 
   async reopenTask(id: string): Promise<Task | undefined> {
-    const task = this.tasks.get(id);
+    const task = await this.getTask(id);
     if (!task || task.status !== "completed") return undefined;
 
     const now = new Date();
-    const reopenedTask: Task = {
-      ...task,
-      status: "open",
-      completedAt: null,
-      updatedAt: now,
-    };
-    this.tasks.set(id, reopenedTask);
-    return reopenedTask;
+    const [reopened] = await db
+      .update(tasks)
+      .set({ status: "open", completedAt: null, updatedAt: now })
+      .where(eq(tasks.id, id))
+      .returning();
+    return reopened;
   }
 
   async archiveTask(id: string): Promise<Task | undefined> {
-    const task = this.tasks.get(id);
+    const task = await this.getTask(id);
     if (!task || task.archivedAt !== null) return undefined;
 
     const now = new Date();
-    const archivedTask: Task = {
-      ...task,
-      archivedAt: now,
-      updatedAt: now,
-    };
-    this.tasks.set(id, archivedTask);
-    return archivedTask;
+    const [archived] = await db
+      .update(tasks)
+      .set({ archivedAt: now, updatedAt: now })
+      .where(eq(tasks.id, id))
+      .returning();
+    return archived;
   }
 
   async restoreTask(id: string): Promise<Task | undefined> {
-    const task = this.tasks.get(id);
+    const task = await this.getTask(id);
     if (!task || task.archivedAt === null) return undefined;
 
-    const domainTasks = Array.from(this.tasks.values()).filter(
-      (t) => t.domainId === task.domainId && t.status === "open" && t.archivedAt === null
-    );
-    const maxOrder = domainTasks.reduce(
-      (max, t) => Math.max(max, t.domainSortOrder),
-      -1
-    );
+    const domainTasks = await db
+      .select()
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.domainId, task.domainId),
+          eq(tasks.status, "open"),
+          isNull(tasks.archivedAt)
+        )
+      );
+    const maxOrder = domainTasks.reduce((max, t) => Math.max(max, t.domainSortOrder), -1);
 
     const now = new Date();
-    const restoredTask: Task = {
-      ...task,
-      archivedAt: null,
-      domainSortOrder: maxOrder + 1,
-      updatedAt: now,
-    };
-    this.tasks.set(id, restoredTask);
-    return restoredTask;
+    const [restored] = await db
+      .update(tasks)
+      .set({ archivedAt: null, domainSortOrder: maxOrder + 1, updatedAt: now })
+      .where(eq(tasks.id, id))
+      .returning();
+    return restored;
   }
 
   async reorderTasks(domainId: string, orderedIds: string[]): Promise<void> {
-    orderedIds.forEach((id, index) => {
-      const task = this.tasks.get(id);
-      if (task && task.domainId === domainId) {
-        this.tasks.set(id, {
-          ...task,
-          domainSortOrder: index,
-          updatedAt: new Date(),
-        });
-      }
-    });
+    const now = new Date();
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db
+        .update(tasks)
+        .set({ domainSortOrder: i, updatedAt: now })
+        .where(and(eq(tasks.id, orderedIds[i]), eq(tasks.domainId, domainId)));
+    }
   }
 
   async moveTask(taskId: string, newDomainId: string, newIndex: number): Promise<Task | undefined> {
-    const task = this.tasks.get(taskId);
+    const task = await this.getTask(taskId);
     if (!task || task.status !== "open") return undefined;
 
     const oldDomainId = task.domainId;
@@ -447,62 +444,70 @@ export class MemStorage implements IStorage {
     const clampedIndex = Math.max(0, newIndex);
 
     if (oldDomainId === newDomainId) {
-      const domainTasks = Array.from(this.tasks.values())
-        .filter((t) => t.domainId === newDomainId && t.status === "open")
-        .sort((a, b) => a.domainSortOrder - b.domainSortOrder);
+      const domainTasks = await db
+        .select()
+        .from(tasks)
+        .where(and(eq(tasks.domainId, newDomainId), eq(tasks.status, "open")))
+        .orderBy(asc(tasks.domainSortOrder));
 
       const oldIndex = domainTasks.findIndex((t) => t.id === taskId);
       if (oldIndex === -1) return undefined;
 
-      domainTasks.splice(oldIndex, 1);
-      const targetIndex = Math.min(clampedIndex, domainTasks.length);
-      domainTasks.splice(targetIndex, 0, task);
+      const reordered = [...domainTasks];
+      reordered.splice(oldIndex, 1);
+      const targetIndex = Math.min(clampedIndex, reordered.length);
+      reordered.splice(targetIndex, 0, task);
 
-      domainTasks.forEach((t, index) => {
-        this.tasks.set(t.id, {
-          ...this.tasks.get(t.id)!,
-          domainSortOrder: index,
-          updatedAt: now,
-        });
-      });
+      for (let i = 0; i < reordered.length; i++) {
+        await db
+          .update(tasks)
+          .set({ domainSortOrder: i, updatedAt: now })
+          .where(eq(tasks.id, reordered[i].id));
+      }
     } else {
-      const oldDomainTasks = Array.from(this.tasks.values())
-        .filter((t) => t.domainId === oldDomainId && t.status === "open" && t.id !== taskId)
-        .sort((a, b) => a.domainSortOrder - b.domainSortOrder);
+      const oldDomainTasks = await db
+        .select()
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.domainId, oldDomainId),
+            eq(tasks.status, "open")
+          )
+        )
+        .orderBy(asc(tasks.domainSortOrder));
 
-      oldDomainTasks.forEach((t, index) => {
-        this.tasks.set(t.id, {
-          ...this.tasks.get(t.id)!,
-          domainSortOrder: index,
-          updatedAt: now,
-        });
-      });
+      const filteredOldTasks = oldDomainTasks.filter((t) => t.id !== taskId);
+      for (let i = 0; i < filteredOldTasks.length; i++) {
+        await db
+          .update(tasks)
+          .set({ domainSortOrder: i, updatedAt: now })
+          .where(eq(tasks.id, filteredOldTasks[i].id));
+      }
 
-      const newDomainTasks = Array.from(this.tasks.values())
-        .filter((t) => t.domainId === newDomainId && t.status === "open")
-        .sort((a, b) => a.domainSortOrder - b.domainSortOrder);
+      const newDomainTasks = await db
+        .select()
+        .from(tasks)
+        .where(and(eq(tasks.domainId, newDomainId), eq(tasks.status, "open")))
+        .orderBy(asc(tasks.domainSortOrder));
 
       const targetIndex = Math.min(clampedIndex, newDomainTasks.length);
 
-      newDomainTasks.forEach((t, index) => {
-        const newOrder = index >= targetIndex ? index + 1 : index;
-        this.tasks.set(t.id, {
-          ...this.tasks.get(t.id)!,
-          domainSortOrder: newOrder,
-          updatedAt: now,
-        });
-      });
+      for (let i = 0; i < newDomainTasks.length; i++) {
+        const newOrder = i >= targetIndex ? i + 1 : i;
+        await db
+          .update(tasks)
+          .set({ domainSortOrder: newOrder, updatedAt: now })
+          .where(eq(tasks.id, newDomainTasks[i].id));
+      }
 
-      this.tasks.set(taskId, {
-        ...task,
-        domainId: newDomainId,
-        domainSortOrder: targetIndex,
-        updatedAt: now,
-      });
+      await db
+        .update(tasks)
+        .set({ domainId: newDomainId, domainSortOrder: targetIndex, updatedAt: now })
+        .where(eq(tasks.id, taskId));
     }
 
-    return this.tasks.get(taskId);
+    return this.getTask(taskId);
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
