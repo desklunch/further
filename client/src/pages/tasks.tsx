@@ -419,10 +419,17 @@ export default function TasksPage() {
         setOverDomainId(overTask.domainId);
         const domainTasks = tasksByDomain[overTask.domainId] || [];
         const overIndex = domainTasks.findIndex((t) => t.id === overId);
+        const activeIndex = domainTasks.findIndex((t) => t.id === activeId);
+        
+        let indicatorIndex = overIndex >= 0 ? overIndex : domainTasks.length;
+        if (activeIndex !== -1 && activeIndex < overIndex) {
+          indicatorIndex = overIndex + 1;
+        }
+        
         setDropIndicator({
           type: "task",
           containerId: overTask.domainId,
-          index: overIndex >= 0 ? overIndex : domainTasks.length,
+          index: indicatorIndex,
         });
       }
     }
