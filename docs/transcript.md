@@ -6,19 +6,6 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ---
 
-## 2026-01-13
-
-### Drag-and-Drop UX Refactor: Static List with Drop Indicator
-- **18:30 UTC** | Checkpoint `pending` | Refactored DnD to use "static list with drop indicator" pattern
-- **18:30 UTC** | Items no longer visually shuffle during drag - transforms removed from sortable components
-- **18:30 UTC** | Dragged items show dimmed/ghosted in original position
-- **18:30 UTC** | Horizontal colored line indicator shows drop target position
-- **18:30 UTC** | List only reorders after drop is completed
-- **18:30 UTC** | Updated: tasks.tsx, sortable-task-row.tsx, droppable-domain.tsx, guidelines.md
-- **18:25 UTC** | User requested: stop visual reordering during drag, show drop indicator line instead
-
----
-
 ## 2026-01-12
 
 ### PostgreSQL Database Integration

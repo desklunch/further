@@ -19,6 +19,7 @@ import {
   useSortable,
   arrayMove,
 } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { AppHeader } from "@/components/app-header";
 import { FilterSortBar } from "@/components/filter-sort-bar";
 import { DomainHeader } from "@/components/domain-header";
@@ -47,71 +48,48 @@ interface SortableDomainSectionProps {
   children: React.ReactNode;
 }
 
-interface DropIndicatorInfo {
-  type: "task" | "domain";
-  containerId: string;
-  index: number;
-}
-
-interface SortableDomainSectionPropsExtended extends SortableDomainSectionProps {
-  dropIndicator: DropIndicatorInfo | null;
-  domainIndex: number;
-  isLastDomain: boolean;
-}
-
 function SortableDomainSection({ 
   domain, 
   taskCount, 
   showDragHandle,
   onAddTask, 
   onRename, 
-  children,
-  dropIndicator,
-  domainIndex,
-  isLastDomain,
-}: SortableDomainSectionPropsExtended) {
+  children 
+}: SortableDomainSectionProps) {
   const {
     attributes,
     listeners,
     setNodeRef,
+    transform,
+    transition,
     isDragging,
   } = useSortable({ 
     id: `domain-sort-${domain.id}`,
     data: { type: "domain", domain }
   });
 
-  const showIndicatorBefore = dropIndicator?.type === "domain" && 
-    dropIndicator.containerId === "domains" && 
-    dropIndicator.index === domainIndex;
-
-  const showIndicatorAfter = isLastDomain && 
-    dropIndicator?.type === "domain" && 
-    dropIndicator.containerId === "domains" && 
-    dropIndicator.index === domainIndex + 1;
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
 
   return (
     <div 
       ref={setNodeRef} 
-      className="group relative"
+      style={style}
+      className="group"
       data-testid={`domain-section-${domain.id}`}
     >
-      {showIndicatorBefore && (
-        <div className="absolute -top-[2px] left-0 right-0 z-20 h-[3px] bg-primary rounded-full" />
-      )}
-      <div className={isDragging ? "opacity-40" : ""}>
-        <DomainHeader
-          domain={domain}
-          taskCount={taskCount}
-          onAddTask={onAddTask}
-          onRename={onRename}
-          showDragHandle={showDragHandle}
-          dragHandleProps={{ ...attributes, ...listeners }}
-        />
-        {children}
-      </div>
-      {showIndicatorAfter && (
-        <div className="absolute -bottom-[2px] left-0 right-0 z-20 h-[3px] bg-primary rounded-full" />
-      )}
+      <DomainHeader
+        domain={domain}
+        taskCount={taskCount}
+        onAddTask={onAddTask}
+        onRename={onRename}
+        showDragHandle={showDragHandle}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
+      {children}
     </div>
   );
 }
@@ -138,11 +116,6 @@ export default function TasksPage() {
   const [optimisticTasks, setOptimisticTasks] = useState<Task[] | null>(null);
   const [optimisticDomains, setOptimisticDomains] = useState<Domain[] | null>(null);
   const [dragItemType, setDragItemType] = useState<DragItemType | null>(null);
-  const [dropIndicator, setDropIndicator] = useState<{
-    type: "task" | "domain";
-    containerId: string;
-    index: number;
-  } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -371,69 +344,24 @@ export default function TasksPage() {
   }, [tasks, activeDomainsList]);
 
   const handleDragOver = useCallback((event: DragOverEvent) => {
-    const { active, over } = event;
-    
-    if (!over) {
-      setOverDomainId(null);
-      setDropIndicator(null);
-      return;
-    }
-
-    const activeId = active.id.toString();
-    const overId = over.id.toString();
-
-    if (dragItemType === "domain") {
-      if (overId.startsWith("domain-sort-")) {
-        const overDomainId = overId.replace("domain-sort-", "");
-        const overIndex = activeDomainsList.findIndex((d) => d.id === overDomainId);
-        const activeIndex = activeDomainsList.findIndex((d) => `domain-sort-${d.id}` === activeId);
-        
-        if (overIndex !== -1 && overIndex !== activeIndex) {
-          const indicatorIndex = activeIndex < overIndex ? overIndex + 1 : overIndex;
-          setDropIndicator({
-            type: "domain",
-            containerId: "domains",
-            index: indicatorIndex,
-          });
-        } else {
-          setDropIndicator(null);
-        }
-      }
-      return;
-    }
-
     if (dragItemType !== "task") return;
 
+    const { over } = event;
+    if (!over) {
+      setOverDomainId(null);
+      return;
+    }
+
+    const overId = over.id.toString();
     if (overId.startsWith("domain-")) {
-      const targetDomainId = overId.replace("domain-", "");
-      setOverDomainId(targetDomainId);
-      const domainTasks = tasksByDomain[targetDomainId] || [];
-      setDropIndicator({
-        type: "task",
-        containerId: targetDomainId,
-        index: domainTasks.filter((t) => t.id !== activeId).length,
-      });
+      setOverDomainId(overId.replace("domain-", ""));
     } else if (!overId.startsWith("domain-sort-")) {
       const overTask = tasks.find((t) => t.id === overId);
       if (overTask) {
         setOverDomainId(overTask.domainId);
-        const domainTasks = tasksByDomain[overTask.domainId] || [];
-        const overIndex = domainTasks.findIndex((t) => t.id === overId);
-        const activeIndex = domainTasks.findIndex((t) => t.id === activeId);
-        
-        let indicatorIndex = overIndex >= 0 ? overIndex : domainTasks.length;
-        if (activeIndex !== -1 && activeIndex < overIndex) {
-          indicatorIndex = overIndex + 1;
-        }
-        
-        setDropIndicator({
-          type: "task",
-          containerId: overTask.domainId,
-          index: indicatorIndex,
-        });
       }
     }
-  }, [tasks, tasksByDomain, dragItemType, activeDomainsList]);
+  }, [tasks, dragItemType]);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
@@ -442,7 +370,6 @@ export default function TasksPage() {
     setActiveDomain(null);
     setOverDomainId(null);
     setDragItemType(null);
-    setDropIndicator(null);
 
     if (!over) return;
 
@@ -607,7 +534,7 @@ export default function TasksPage() {
           >
             <div className="mx-auto max-w-6xl pb-8" data-testid="task-list-container">
               <SortableContext items={domainSortIds} strategy={verticalListSortingStrategy}>
-                {activeDomainsList.map((domain, domainIndex) => {
+                {activeDomainsList.map((domain) => {
                   const domainTasks = tasksByDomain[domain.id] || [];
                   const isAddingHere = addingToDomainId === domain.id;
                   const isOverThisDomain = overDomainId === domain.id;
@@ -620,9 +547,6 @@ export default function TasksPage() {
                       showDragHandle={showDragHandle}
                       onAddTask={(id) => setAddingToDomainId(id)}
                       onRename={handleRenameDomain}
-                      dropIndicator={dropIndicator}
-                      domainIndex={domainIndex}
-                      isLastDomain={domainIndex === activeDomainsList.length - 1}
                     >
                       {isAddingHere && (
                         <InlineTaskForm
@@ -639,7 +563,6 @@ export default function TasksPage() {
                         pendingTaskIds={pendingTaskIds}
                         isOver={isOverThisDomain && dragItemType === "task"}
                         activeTaskId={activeTask?.id}
-                        dropIndicator={dropIndicator}
                         onComplete={(id) => completeTaskMutation.mutate(id)}
                         onReopen={(id) => reopenTaskMutation.mutate(id)}
                         onArchive={(id) => archiveTaskMutation.mutate(id)}

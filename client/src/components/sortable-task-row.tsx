@@ -1,4 +1,5 @@
 import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,8 @@ export function SortableTaskRow({
     attributes,
     listeners,
     setNodeRef,
+    transform,
+    transition,
     isDragging,
   } = useSortable({
     id: task.id,
@@ -53,6 +56,11 @@ export function SortableTaskRow({
     },
   });
 
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
   const handleCheckChange = () => {
     if (isCompleted) {
       onReopen(task.id);
@@ -61,12 +69,24 @@ export function SortableTaskRow({
     }
   };
 
+  if (isDragging && !isOverlay) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="flex h-[52px] items-center gap-3 border-b border-dashed border-muted-foreground/30 bg-muted/30 px-4 py-3"
+        data-testid={`task-row-placeholder-${task.id}`}
+      />
+    );
+  }
+
   return (
     <div
       ref={setNodeRef}
+      style={style}
       className={`group flex items-center gap-3 border-b px-4 py-3 hover-elevate ${
         isPending ? "opacity-60" : ""
-      } ${isDragging && !isOverlay ? "opacity-40 bg-muted/30" : ""} ${isOverlay ? "rounded-md border bg-card shadow-lg" : ""}`}
+      } ${isOverlay ? "rounded-md border bg-card shadow-lg" : ""}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       data-testid={`task-row-${task.id}`}

@@ -3,12 +3,6 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { SortableTaskRow } from "./sortable-task-row";
 import type { Task, FilterMode } from "@shared/schema";
 
-interface DropIndicatorInfo {
-  type: "task" | "domain";
-  containerId: string;
-  index: number;
-}
-
 interface DroppableDomainProps {
   domainId: string;
   tasks: Task[];
@@ -21,7 +15,6 @@ interface DroppableDomainProps {
   onEdit: (task: Task) => void;
   isOver?: boolean;
   activeTaskId?: string | null;
-  dropIndicator?: DropIndicatorInfo | null;
 }
 
 export function DroppableDomain({
@@ -36,7 +29,6 @@ export function DroppableDomain({
   onEdit,
   isOver,
   activeTaskId,
-  dropIndicator,
 }: DroppableDomainProps) {
   const { setNodeRef } = useDroppable({
     id: `domain-${domainId}`,
@@ -48,22 +40,16 @@ export function DroppableDomain({
 
   const taskIds = tasks.map((t) => t.id);
   const showEmptyDropZone = tasks.length === 0 && isOver;
-  const showIndicatorAtEnd = dropIndicator?.type === "task" && 
-    dropIndicator.containerId === domainId && 
-    dropIndicator.index >= tasks.length;
 
   return (
     <div ref={setNodeRef} className="min-h-[1px]">
       <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
         {tasks.map((task, index) => {
-          const showIndicatorBefore = dropIndicator?.type === "task" && 
-            dropIndicator.containerId === domainId && 
-            dropIndicator.index === index &&
-            task.id !== activeTaskId;
+          const showDropIndicator = isOver && activeTaskId && task.id !== activeTaskId && index === 0;
           return (
             <div key={task.id} className="relative">
-              {showIndicatorBefore && (
-                <div className="absolute -top-[2px] left-0 right-0 z-20 h-[3px] bg-primary rounded-full" />
+              {showDropIndicator && (
+                <div className="absolute -top-[1px] left-0 right-0 z-10 h-[2px] bg-primary" />
               )}
               <SortableTaskRow
                 task={task}
@@ -82,11 +68,6 @@ export function DroppableDomain({
       {showEmptyDropZone && (
         <div className="flex h-[52px] items-center justify-center border-b border-dashed border-primary bg-primary/5 px-4">
           <span className="text-sm text-muted-foreground">Drop here</span>
-        </div>
-      )}
-      {showIndicatorAtEnd && tasks.length > 0 && (
-        <div className="relative h-[3px]">
-          <div className="absolute top-0 left-0 right-0 z-20 h-[3px] bg-primary rounded-full" />
         </div>
       )}
     </div>
