@@ -16,8 +16,15 @@ Reverse chronological history of significant changes and decisions. Each entry i
 - **18:18 UTC** | Updated schema defaults: priority/effort/complexity now default to 1 (was 2)
 - **18:17 UTC** | User requested: persistent database storage for tasks and domains
 
+### Mobile Responsive Task Layout + DnD Filter Fix
+- **19:30 UTC** | Checkpoint `pending` | Added responsive layout: badges stack below task name on mobile, inline on desktop
+- **19:30 UTC** | Updated: task-row.tsx, sortable-task-row.tsx with flex-col/flex-row responsive classes
+- **19:30 UTC** | Extended DnD to work in both "All" and "Open" filter modes (was only "Open")
+- **19:30 UTC** | Fixed pre-existing LSP errors in task-row.tsx: isArchived now checks archivedAt
+- **19:25 UTC** | User requested: mobile-friendly badge layout, DnD in All filter view
+
 ### Date Picker Clear Buttons
-- **19:00 UTC** | Checkpoint `pending` | Added clear (X) button to due date and scheduled date pickers
+- **19:00 UTC** | Checkpoint `f67cd267` | Added clear (X) button to due date and scheduled date pickers
 - **19:00 UTC** | Updated: inline-task-form, global-add-task-dialog, task-edit-drawer
 - **19:00 UTC** | Fixed pre-existing LSP error: task-edit-drawer now checks archivedAt instead of status
 - **18:55 UTC** | User requested: ability to clear dates when creating or editing tasks

@@ -301,7 +301,7 @@ export default function TasksPage() {
     return grouped;
   }, [tasks, activeDomainsList]);
 
-  const showDragHandle = filter === "open" && sortMode === "manual";
+  const showDragHandle = (filter === "open" || filter === "all") && sortMode === "manual";
 
   const handleAddTask = (task: Omit<InsertTask, "userId">) => {
     createTaskMutation.mutate(task);

@@ -110,9 +110,9 @@ export function SortableTaskRow({
         className="h-5 w-5"
       />
 
-      <div className="flex flex-1 items-center gap-2 overflow-hidden">
+      <div className="flex flex-1 flex-col items-start gap-1 overflow-hidden md:flex-row md:items-center md:gap-2">
         <span
-          className={`flex-1 truncate text-base ${
+          className={`w-full text-base md:flex-1 md:truncate ${
             isCompleted || isArchived
               ? "text-muted-foreground line-through"
               : "font-medium"
@@ -122,7 +122,7 @@ export function SortableTaskRow({
           {task.title}
         </span>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1 md:gap-2">
           {task.priority && (
             <Badge variant="secondary" className="gap-1 text-xs">
               <Zap className="h-3 w-3" />
