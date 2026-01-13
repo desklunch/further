@@ -20,7 +20,17 @@ Principles established during project development. Review before starting any ta
 ## Technical Principles
 
 ### Drag-and-Drop
+
+#### UX Pattern: Static List with Drop Indicator
+- **No live reordering**: Items must NOT visually shuffle as user drags. The list stays static during drag.
+- **Ghost in place**: The dragged item's placeholder remains in its original position, shown dimmed/ghosted
+- **Drop indicator line**: A horizontal colored line appears between items to show the drop target position
+- **Reorder on drop only**: The list only reorders after the user releases the dragged item
+
+#### Technical Implementation
 - **Sort by domainSortOrder**: When grouping tasks by domain, always sort each domain's tasks by `domainSortOrder` to reflect manual ordering
+- **Suppress transforms**: Non-active sortable items should have their transforms disabled so they don't shift during drag
+- **Track drop position**: Use onDragOver to compute target index based on pointer position relative to item rects
 - **Optimistic updates pattern**: 
   1. Clone task array and update relevant fields
   2. Call `setOptimisticTasks(newTasks)` immediately
