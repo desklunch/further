@@ -16,6 +16,12 @@ Reverse chronological history of significant changes and decisions. Each entry i
 - **18:18 UTC** | Updated schema defaults: priority/effort/complexity now default to 1 (was 2)
 - **18:17 UTC** | User requested: persistent database storage for tasks and domains
 
+### Date Picker Clear Buttons
+- **19:00 UTC** | Checkpoint `pending` | Added clear (X) button to due date and scheduled date pickers
+- **19:00 UTC** | Updated: inline-task-form, global-add-task-dialog, task-edit-drawer
+- **19:00 UTC** | Fixed pre-existing LSP error: task-edit-drawer now checks archivedAt instead of status
+- **18:55 UTC** | User requested: ability to clear dates when creating or editing tasks
+
 ### Task Form Defaults Update
 - **17:30 UTC** | Checkpoint `ba6ec7c9` | Updated default values for priority, effort, complexity from 2 to 1
 - **17:30 UTC** | Updated: inline-task-form, global-add-task-dialog, task-edit-drawer

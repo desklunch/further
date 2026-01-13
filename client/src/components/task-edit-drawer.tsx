@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { format, parseISO } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -166,60 +166,86 @@ export function TaskEditDrawer({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Due Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
+              <div className="flex gap-1">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "flex-1 justify-start text-left font-normal",
+                        !dueDate && "text-muted-foreground"
+                      )}
+                      data-testid="button-edit-task-due-date"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dueDate ? format(dueDate, "MMM d, yyyy") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dueDate}
+                      onSelect={setDueDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                {dueDate && (
                   <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !dueDate && "text-muted-foreground"
-                    )}
-                    data-testid="button-edit-task-due-date"
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setDueDate(undefined)}
+                    data-testid="button-clear-edit-due-date"
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dueDate ? format(dueDate, "MMM d, yyyy") : "Pick a date"}
+                    <X className="h-4 w-4" />
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dueDate}
-                    onSelect={setDueDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+                )}
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label>Scheduled</Label>
-              <Popover>
-                <PopoverTrigger asChild>
+              <div className="flex gap-1">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "flex-1 justify-start text-left font-normal",
+                        !scheduledDate && "text-muted-foreground"
+                      )}
+                      data-testid="button-edit-task-scheduled-date"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {scheduledDate ? format(scheduledDate, "MMM d, yyyy") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={scheduledDate}
+                      onSelect={setScheduledDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                {scheduledDate && (
                   <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !scheduledDate && "text-muted-foreground"
-                    )}
-                    data-testid="button-edit-task-scheduled-date"
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setScheduledDate(undefined)}
+                    data-testid="button-clear-edit-scheduled-date"
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {scheduledDate ? format(scheduledDate, "MMM d, yyyy") : "Pick a date"}
+                    <X className="h-4 w-4" />
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={scheduledDate}
-                    onSelect={setScheduledDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2 pt-4">
-            {task?.status === "archived" && onRestore && (
+            {task?.archivedAt && onRestore && (
               <Button
                 type="button"
                 variant="outline"
