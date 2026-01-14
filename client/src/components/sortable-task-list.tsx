@@ -26,6 +26,7 @@ interface SortableTaskListProps {
   onReopen: (taskId: string) => void;
   onArchive: (taskId: string) => void;
   onEdit: (task: Task) => void;
+  isBeingTargeted?: boolean;
 }
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -194,6 +195,7 @@ export function SortableTaskList({
   onReopen,
   onArchive,
   onEdit,
+  isBeingTargeted = false,
 }: SortableTaskListProps) {
   const taskIds = tasks.map((t) => t.id);
 
@@ -205,10 +207,12 @@ export function SortableTaskList({
     },
   });
 
+  const showHighlight = isOver || isBeingTargeted;
+
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[48px] transition-colors ${isOver ? "bg-accent/30" : ""}`}
+      className={`min-h-[48px] transition-colors ${showHighlight ? "bg-accent/30" : ""}`}
       data-testid={`droppable-domain-${domainId}`}
     >
       <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>

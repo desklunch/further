@@ -10,6 +10,7 @@ import {
   useSensors,
   type DragEndEvent,
   type DragStartEvent,
+  type DragOverEvent,
   DragOverlay,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
@@ -32,6 +33,8 @@ export default function TasksPage() {
   const [showGlobalAddDialog, setShowGlobalAddDialog] = useState(false);
   const [localTasksByDomain, setLocalTasksByDomain] = useState<Record<string, Task[]>>({});
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [activeDomainId, setActiveDomainId] = useState<string | null>(null);
+  const [hoverDomainId, setHoverDomainId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -220,11 +223,30 @@ export default function TasksPage() {
     const data = event.active.data.current as TaskDragData | undefined;
     if (data?.type === "task") {
       setActiveTask(data.task);
+      setActiveDomainId(data.domainId);
     }
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    const { over } = event;
+    if (!over) {
+      setHoverDomainId(null);
+      return;
+    }
+
+    let targetDomainId: string | null = null;
+    if (over.data.current?.type === "domain") {
+      targetDomainId = over.data.current.domainId;
+    } else if (over.data.current?.type === "task") {
+      targetDomainId = (over.data.current as TaskDragData).domainId;
+    }
+    setHoverDomainId(targetDomainId);
   }
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveTask(null);
+    setActiveDomainId(null);
+    setHoverDomainId(null);
     const { active, over } = event;
 
     if (!over) return;
@@ -343,6 +365,7 @@ export default function TasksPage() {
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
             <div className="mx-auto max-w-6xl pb-8" data-testid="task-list-container">
@@ -374,6 +397,11 @@ export default function TasksPage() {
                       onReopen={(id) => reopenTaskMutation.mutate(id)}
                       onArchive={(id) => archiveTaskMutation.mutate(id)}
                       onEdit={setEditingTask}
+                      isBeingTargeted={
+                        activeDomainId !== null &&
+                        activeDomainId !== domain.id &&
+                        hoverDomainId === domain.id
+                      }
                     />
                   </div>
                 );
