@@ -1,0 +1,165 @@
+Clarifications
+
+1) Inbox Item lifecycle
+
+Treat InboxItem as a transient intake object. It should not persist indefinitely once it’s been turned into a real task.
+
+Add to Today
+Outcome: convert to Task + create TaskDayAssignment, then mark InboxItem triaged.
+	•	Create Task (domain required; if unknown, require domain selection at triage time)
+	•	Create TaskDayAssignment(task_id, date=today)
+	•	Set InboxItem.status = triaged (or delete; I recommend status for audit/debug)
+	•	InboxItem disappears from Today immediately
+
+Schedule
+Outcome: convert to Task with scheduled_date = chosen_date, then mark InboxItem triaged.
+	•	Create Task
+	•	Set Task.scheduled_date = chosen_date
+	•	Set InboxItem.status = triaged
+	•	InboxItem disappears from Today immediately
+	•	Task will appear in Today on its scheduled date
+
+Leave
+Outcome: InboxItem remains untriaged and visible in Today.
+
+To prevent “infinite pile” without adding complexity, implement one lightweight mechanism:
+	•	Inbox items do not age out automatically (avoid magic)
+	•	But provide a UI affordance:
+	•	“Snooze…” (optional; can be v0.2.1)
+	•	OR “Archive inbox item” (low effort and valuable)
+
+My recommendation for v0.2: include Archive inbox item (does not create a task).
+
+Summary: Add/Schedule always convert InboxItem → Task and mark the InboxItem triaged.
+
+⸻
+
+2) TaskDayAssignment vs scheduled_date precedence
+
+Define a single visibility rule that prevents contradictions:
+
+Visibility rules
+Today shows a task if ANY of these are true:
+	1.	Task.scheduled_date == today
+	2.	TaskDayAssignment(date=today) exists
+
+Today must NOT show tasks solely because they are scheduled for a different day.
+
+Precedence behavior
+If a task has:
+	•	scheduled_date = 2026-01-15
+	•	TaskDayAssignment = 2026-01-14
+
+Then:
+	•	On Jan 14, it appears under “Added to Today” (assignment-driven).
+	•	On Jan 15, it appears under “Scheduled Today” (schedule-driven), unless it was completed earlier.
+
+This is not a conflict; it’s simply two ways a task can surface.
+
+Recommended guardrail (optional but helpful)
+When user “Add to Today” a task that is scheduled for a future date, show a small tag:
+	•	“Scheduled Jan 15”
+No need to prompt. No hidden behavior.
+
+⸻
+
+3) Valence visual representation
+
+Agree with the concept (dread/neutral/energizing). I recommend icons + minimal color, because color-heavy semantics tend to feel judgmental.
+
+Proposed mapping
+	•	-1 (Dread): warning/triangle or frown icon, muted warm tint (not loud red)
+	•	0 (Neutral): minus icon or neutral face, gray
+	•	+1 (Energizing): sparkle/star or smile icon, muted cool/positive tint (not “success green check”)
+
+Avoid “green check” because completion already uses check semantics; you don’t want valence conflated with done.
+
+⸻
+
+4) Effort “Unknown” state
+
+Yes—needs a clear visual, otherwise it will be confusing.
+
+Recommended UI
+	•	Badge/chip: “Effort ?” (neutral gray)
+	•	In edit UI: selector with options: ? / 1 / 2 / 3 (or range you choose later)
+
+Sorting:
+	•	For “Effort” sort, show known effort first, then unknown grouped last (or first—pick one and be consistent). I recommend unknown last.
+
+⸻
+
+5) Timezone handling
+
+Use browser local time as the source of truth for “Today” and for date pickers. Store dates as date-only values, not timestamps.
+
+Best practice here is:
+	•	Store date fields (scheduled_date, assignment date, habit entry date) as YYYY-MM-DD in the user’s local calendar sense.
+	•	Use UTC timestamps only for created_at/updated_at/completed_at.
+
+This prevents the classic bug where “Jan 14” becomes “Jan 13” depending on UTC offset.
+
+So: Today rolls over at the user’s local midnight (browser locale).
+
+⸻
+
+6) Habit management UI
+
+Keep it simple and separate from execution.
+
+Recommendation:
+	•	Add /habits management page (create/edit/delete habits and options)
+	•	Today view only displays habits and allows completion
+
+Do not do inline habit authoring in Today in v0.2—execution surfaces get cluttered fast.
+
+⸻
+
+Addressing the “Potential Implementation Issues”
+
+1) Filter change breaking muscle memory
+
+Agree. Keep “All” as an alias.
+
+Recommended filters:
+	•	All (open unscheduled + open scheduled)
+	•	Open (open unscheduled only) — keep for your “out of mind” workflow
+	•	Scheduled (open scheduled only)
+	•	Completed
+	•	Archived
+
+This gives both “see everything” and “keep backlog clean.”
+
+2) Complexity → Valence migration mapping
+
+I do NOT recommend resetting all to neutral; you’ll lose the signal you already encoded, even if imperfect.
+
+A reasonable default mapping is:
+	•	complexity 1 → valence -1 (hard/unpleasant)
+	•	complexity 2 → valence 0
+	•	complexity 3 → valence +1
+
+Even if “complexity” wasn’t used perfectly, this preserves user-entered variance.
+
+If you believe you did not mean that historically, then yes, reset to neutral—but that’s a product choice. My default recommendation is preserve information.
+
+3) Performance / indexing
+
+Agree. Add indexes exactly as you stated:
+	•	tasks: (user_id, status), (user_id, scheduled_date)
+	•	task_day_assignments: (user_id, date) and/or (date, user_id) depending on query patterns
+	•	habit_daily_entries: (user_id, date) and (habit_id, date)
+	•	inbox_items: (user_id, status)
+
+Also ensure Today endpoint does 4 small indexed queries, not one giant join.
+
+⸻
+
+One additional v0.2 recommendation: lightweight Undo
+
+You decided not to block v0.2 on general undo. Good. But implement “toast undo” for:
+	•	archive task
+	•	schedule/reschedule
+	•	triage inbox item
+
+This reduces early friction dramatically.

@@ -3,7 +3,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { GripVertical, Pencil, Trash2, Calendar, Zap, BarChart3, Target, Check, X } from "lucide-react";
+import { GripVertical, Pencil, Trash2, Calendar, Zap, BarChart3, Triangle, Circle, Sparkles, Check, X, HelpCircle } from "lucide-react";
 import type { Task, FilterMode } from "@shared/schema";
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -191,18 +191,16 @@ export function TaskRowContent({
               P{task.priority}
             </Badge>
           )}
-          {task.effortPoints && (
-            <Badge variant="secondary" className="gap-1 text-xs">
-              <BarChart3 className="h-3 w-3" />
-              {task.effortPoints}pt
-            </Badge>
-          )}
-          {task.complexity && (
-            <Badge variant="secondary" className="gap-1 text-xs">
-              <Target className="h-3 w-3" />
-              C{task.complexity}
-            </Badge>
-          )}
+          <Badge variant="secondary" className="gap-1 text-xs">
+            <BarChart3 className="h-3 w-3" />
+            {task.effortPoints != null ? `${task.effortPoints}pt` : <HelpCircle className="h-3 w-3" />}
+          </Badge>
+          <Badge variant="secondary" className="gap-1 text-xs">
+            {task.valence === -1 && <Triangle className="h-3 w-3" />}
+            {task.valence === 0 && <Circle className="h-3 w-3" />}
+            {task.valence === 1 && <Sparkles className="h-3 w-3" />}
+            {task.valence == null && <Circle className="h-3 w-3" />}
+          </Badge>
           {task.dueDate && (
             <Badge variant="secondary" className="gap-1 text-xs">
               <Calendar className="h-3 w-3" />

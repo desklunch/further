@@ -18,6 +18,7 @@ interface FilterSortBarProps {
 const filterOptions: { value: FilterMode; label: string }[] = [
   { value: "all", label: "All" },
   { value: "open", label: "Open" },
+  { value: "scheduled", label: "Scheduled" },
   { value: "completed", label: "Completed" },
   { value: "archived", label: "Archived" },
 ];
@@ -28,7 +29,7 @@ const sortOptions: { value: SortMode; label: string }[] = [
   { value: "scheduled_date", label: "Scheduled" },
   { value: "priority", label: "Priority" },
   { value: "effort", label: "Effort" },
-  { value: "complexity", label: "Complexity" },
+  { value: "valence", label: "Valence" },
   { value: "created", label: "Created" },
 ];
 

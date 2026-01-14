@@ -1,7 +1,16 @@
 import { randomUUID } from "crypto";
 import { eq, and, isNull, isNotNull, asc, desc, sql } from "drizzle-orm";
 import { db } from "./db";
-import { domains, tasks, users } from "@shared/schema";
+import { 
+  domains, 
+  tasks, 
+  users,
+  inboxItems,
+  habitDefinitions,
+  habitOptions,
+  habitDailyEntries,
+  taskDayAssignments,
+} from "@shared/schema";
 import type {
   User,
   InsertUser,
@@ -12,6 +21,16 @@ import type {
   UpdateTask,
   FilterMode,
   SortMode,
+  InboxItem,
+  InsertInboxItem,
+  HabitDefinition,
+  InsertHabitDefinition,
+  HabitOption,
+  InsertHabitOption,
+  HabitDailyEntry,
+  InsertHabitDailyEntry,
+  TaskDayAssignment,
+  InsertTaskDayAssignment,
 } from "@shared/schema";
 
 const DEFAULT_USER_ID = "default-user";
@@ -41,6 +60,8 @@ export interface IStorage {
   
   getTasks(userId: string, filterMode: FilterMode, sortMode: SortMode): Promise<Task[]>;
   getTask(id: string): Promise<Task | undefined>;
+  getTasksScheduledForDate(userId: string, date: string): Promise<Task[]>;
+  getTasksAssignedToDate(userId: string, date: string): Promise<Task[]>;
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: string, updates: UpdateTask): Promise<Task | undefined>;
   completeTask(id: string): Promise<Task | undefined>;
@@ -49,6 +70,33 @@ export interface IStorage {
   restoreTask(id: string): Promise<Task | undefined>;
   reorderTasks(domainId: string, orderedIds: string[]): Promise<void>;
   moveTask(taskId: string, newDomainId: string, newIndex: number): Promise<Task | undefined>;
+  
+  getInboxItems(userId: string): Promise<InboxItem[]>;
+  getInboxItem(id: string): Promise<InboxItem | undefined>;
+  createInboxItem(item: InsertInboxItem): Promise<InboxItem>;
+  triageInboxItem(id: string): Promise<InboxItem | undefined>;
+  archiveInboxItem(id: string): Promise<InboxItem | undefined>;
+  
+  getHabitDefinitions(userId: string): Promise<HabitDefinition[]>;
+  getHabitDefinition(id: string): Promise<HabitDefinition | undefined>;
+  createHabitDefinition(habit: InsertHabitDefinition): Promise<HabitDefinition>;
+  updateHabitDefinition(id: string, updates: Partial<InsertHabitDefinition>): Promise<HabitDefinition | undefined>;
+  deleteHabitDefinition(id: string): Promise<void>;
+  reorderHabitDefinitions(userId: string, orderedIds: string[]): Promise<void>;
+  
+  getHabitOptions(habitId: string): Promise<HabitOption[]>;
+  createHabitOption(option: InsertHabitOption): Promise<HabitOption>;
+  updateHabitOption(id: string, updates: Partial<InsertHabitOption>): Promise<HabitOption | undefined>;
+  deleteHabitOption(id: string): Promise<void>;
+  
+  getHabitDailyEntry(habitId: string, date: string): Promise<HabitDailyEntry | undefined>;
+  getHabitDailyEntriesForDate(userId: string, date: string): Promise<HabitDailyEntry[]>;
+  createOrUpdateHabitDailyEntry(entry: InsertHabitDailyEntry): Promise<HabitDailyEntry>;
+  
+  getTaskDayAssignment(taskId: string, date: string): Promise<TaskDayAssignment | undefined>;
+  getTaskDayAssignmentsForDate(userId: string, date: string): Promise<TaskDayAssignment[]>;
+  createTaskDayAssignment(assignment: InsertTaskDayAssignment): Promise<TaskDayAssignment>;
+  deleteTaskDayAssignment(taskId: string, date: string): Promise<void>;
   
   seedDomainsIfNeeded(): Promise<void>;
 }
@@ -153,13 +201,22 @@ export class DatabaseStorage implements IStorage {
     let condition;
     switch (filterMode) {
       case "all":
-        condition = and(eq(tasks.userId, userId), isNull(tasks.archivedAt));
+        condition = and(eq(tasks.userId, userId), eq(tasks.status, "open"), isNull(tasks.archivedAt));
         break;
       case "open":
         condition = and(
           eq(tasks.userId, userId),
           eq(tasks.status, "open"),
-          isNull(tasks.archivedAt)
+          isNull(tasks.archivedAt),
+          isNull(tasks.scheduledDate)
+        );
+        break;
+      case "scheduled":
+        condition = and(
+          eq(tasks.userId, userId),
+          eq(tasks.status, "open"),
+          isNull(tasks.archivedAt),
+          isNotNull(tasks.scheduledDate)
         );
         break;
       case "completed":
@@ -275,11 +332,11 @@ export class DatabaseStorage implements IStorage {
         });
         break;
 
-      case "complexity":
+      case "valence":
         sorted.sort((a, b) => {
-          const complexityA = a.complexity ?? Infinity;
-          const complexityB = b.complexity ?? Infinity;
-          if (complexityA !== complexityB) return complexityA - complexityB;
+          const valenceA = a.valence ?? 0;
+          const valenceB = b.valence ?? 0;
+          if (valenceA !== valenceB) return valenceB - valenceA;
           const priorityA = a.priority ?? 0;
           const priorityB = b.priority ?? 0;
           if (priorityA !== priorityB) return priorityB - priorityA;
@@ -320,8 +377,8 @@ export class DatabaseStorage implements IStorage {
         title: task.title,
         status: "open",
         priority: task.priority ?? 1,
-        effortPoints: task.effortPoints ?? 1,
-        complexity: task.complexity ?? 1,
+        effortPoints: task.effortPoints ?? null,
+        valence: (task.valence ?? 0) as -1 | 0 | 1,
         scheduledDate: task.scheduledDate ?? null,
         dueDate: task.dueDate ?? null,
         domainSortOrder: maxOrder + 1,
@@ -349,13 +406,21 @@ export class DatabaseStorage implements IStorage {
       domainSortOrder = maxOrder + 1;
     }
 
+    const updateData: Record<string, unknown> = {
+      domainSortOrder,
+      updatedAt: new Date(),
+    };
+    if (updates.title !== undefined) updateData.title = updates.title;
+    if (updates.domainId !== undefined) updateData.domainId = updates.domainId;
+    if (updates.priority !== undefined) updateData.priority = updates.priority;
+    if (updates.effortPoints !== undefined) updateData.effortPoints = updates.effortPoints;
+    if (updates.valence !== undefined) updateData.valence = updates.valence as -1 | 0 | 1;
+    if (updates.scheduledDate !== undefined) updateData.scheduledDate = updates.scheduledDate;
+    if (updates.dueDate !== undefined) updateData.dueDate = updates.dueDate;
+
     const [updated] = await db
       .update(tasks)
-      .set({
-        ...updates,
-        domainSortOrder,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(tasks.id, id))
       .returning();
     return updated;
@@ -507,6 +572,280 @@ export class DatabaseStorage implements IStorage {
     }
 
     return this.getTask(taskId);
+  }
+
+  async getTasksScheduledForDate(userId: string, date: string): Promise<Task[]> {
+    return db
+      .select()
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.userId, userId),
+          eq(tasks.scheduledDate, date),
+          eq(tasks.status, "open"),
+          isNull(tasks.archivedAt)
+        )
+      )
+      .orderBy(asc(tasks.domainSortOrder));
+  }
+
+  async getTasksAssignedToDate(userId: string, date: string): Promise<Task[]> {
+    const assignments = await db
+      .select()
+      .from(taskDayAssignments)
+      .where(and(eq(taskDayAssignments.userId, userId), eq(taskDayAssignments.date, date)));
+    
+    if (assignments.length === 0) return [];
+    
+    const taskIds = assignments.map((a) => a.taskId);
+    const assignedTasks = await db
+      .select()
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.userId, userId),
+          eq(tasks.status, "open"),
+          isNull(tasks.archivedAt)
+        )
+      );
+    
+    return assignedTasks.filter((t) => taskIds.includes(t.id));
+  }
+
+  async getInboxItems(userId: string): Promise<InboxItem[]> {
+    return db
+      .select()
+      .from(inboxItems)
+      .where(and(eq(inboxItems.userId, userId), eq(inboxItems.status, "untriaged")))
+      .orderBy(desc(inboxItems.createdAt));
+  }
+
+  async getInboxItem(id: string): Promise<InboxItem | undefined> {
+    const [item] = await db.select().from(inboxItems).where(eq(inboxItems.id, id)).limit(1);
+    return item;
+  }
+
+  async createInboxItem(item: InsertInboxItem): Promise<InboxItem> {
+    const id = randomUUID();
+    const now = new Date();
+    const [newItem] = await db
+      .insert(inboxItems)
+      .values({
+        id,
+        userId: item.userId,
+        title: item.title,
+        status: "untriaged",
+        createdAt: now,
+        triagedAt: null,
+      })
+      .returning();
+    return newItem;
+  }
+
+  async triageInboxItem(id: string): Promise<InboxItem | undefined> {
+    const now = new Date();
+    const [triaged] = await db
+      .update(inboxItems)
+      .set({ status: "triaged", triagedAt: now })
+      .where(eq(inboxItems.id, id))
+      .returning();
+    return triaged;
+  }
+
+  async archiveInboxItem(id: string): Promise<InboxItem | undefined> {
+    const now = new Date();
+    const [archived] = await db
+      .update(inboxItems)
+      .set({ status: "triaged", triagedAt: now })
+      .where(eq(inboxItems.id, id))
+      .returning();
+    return archived;
+  }
+
+  async getHabitDefinitions(userId: string): Promise<HabitDefinition[]> {
+    return db
+      .select()
+      .from(habitDefinitions)
+      .where(and(eq(habitDefinitions.userId, userId), eq(habitDefinitions.isActive, true)))
+      .orderBy(asc(habitDefinitions.sortOrder));
+  }
+
+  async getHabitDefinition(id: string): Promise<HabitDefinition | undefined> {
+    const [habit] = await db.select().from(habitDefinitions).where(eq(habitDefinitions.id, id)).limit(1);
+    return habit;
+  }
+
+  async createHabitDefinition(habit: InsertHabitDefinition): Promise<HabitDefinition> {
+    const existingHabits = await this.getHabitDefinitions(habit.userId);
+    const maxOrder = existingHabits.reduce((max, h) => Math.max(max, h.sortOrder), -1);
+
+    const id = randomUUID();
+    const now = new Date();
+    const [newHabit] = await db
+      .insert(habitDefinitions)
+      .values({
+        id,
+        userId: habit.userId,
+        domainId: habit.domainId,
+        name: habit.name,
+        selectionType: habit.selectionType ?? "single",
+        minRequired: habit.minRequired ?? null,
+        sortOrder: habit.sortOrder ?? maxOrder + 1,
+        isActive: habit.isActive ?? true,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    return newHabit;
+  }
+
+  async updateHabitDefinition(id: string, updates: Partial<InsertHabitDefinition>): Promise<HabitDefinition | undefined> {
+    const [updated] = await db
+      .update(habitDefinitions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(habitDefinitions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteHabitDefinition(id: string): Promise<void> {
+    await db.update(habitDefinitions).set({ isActive: false, updatedAt: new Date() }).where(eq(habitDefinitions.id, id));
+  }
+
+  async reorderHabitDefinitions(userId: string, orderedIds: string[]): Promise<void> {
+    const now = new Date();
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db
+        .update(habitDefinitions)
+        .set({ sortOrder: i, updatedAt: now })
+        .where(and(eq(habitDefinitions.id, orderedIds[i]), eq(habitDefinitions.userId, userId)));
+    }
+  }
+
+  async getHabitOptions(habitId: string): Promise<HabitOption[]> {
+    return db
+      .select()
+      .from(habitOptions)
+      .where(eq(habitOptions.habitId, habitId))
+      .orderBy(asc(habitOptions.sortOrder));
+  }
+
+  async createHabitOption(option: InsertHabitOption): Promise<HabitOption> {
+    const existingOptions = await this.getHabitOptions(option.habitId);
+    const maxOrder = existingOptions.reduce((max, o) => Math.max(max, o.sortOrder), -1);
+
+    const id = randomUUID();
+    const [newOption] = await db
+      .insert(habitOptions)
+      .values({
+        id,
+        habitId: option.habitId,
+        label: option.label,
+        sortOrder: option.sortOrder ?? maxOrder + 1,
+        createdAt: new Date(),
+      })
+      .returning();
+    return newOption;
+  }
+
+  async updateHabitOption(id: string, updates: Partial<InsertHabitOption>): Promise<HabitOption | undefined> {
+    const [updated] = await db
+      .update(habitOptions)
+      .set(updates)
+      .where(eq(habitOptions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteHabitOption(id: string): Promise<void> {
+    await db.delete(habitOptions).where(eq(habitOptions.id, id));
+  }
+
+  async getHabitDailyEntry(habitId: string, date: string): Promise<HabitDailyEntry | undefined> {
+    const [entry] = await db
+      .select()
+      .from(habitDailyEntries)
+      .where(and(eq(habitDailyEntries.habitId, habitId), eq(habitDailyEntries.date, date)))
+      .limit(1);
+    return entry;
+  }
+
+  async getHabitDailyEntriesForDate(userId: string, date: string): Promise<HabitDailyEntry[]> {
+    return db
+      .select()
+      .from(habitDailyEntries)
+      .where(and(eq(habitDailyEntries.userId, userId), eq(habitDailyEntries.date, date)));
+  }
+
+  async createOrUpdateHabitDailyEntry(entry: InsertHabitDailyEntry): Promise<HabitDailyEntry> {
+    const existing = await this.getHabitDailyEntry(entry.habitId, entry.date);
+    const now = new Date();
+
+    if (existing) {
+      const [updated] = await db
+        .update(habitDailyEntries)
+        .set({ selectedOptionIds: entry.selectedOptionIds, updatedAt: now })
+        .where(eq(habitDailyEntries.id, existing.id))
+        .returning();
+      return updated;
+    }
+
+    const habit = await this.getHabitDefinition(entry.habitId);
+    const id = randomUUID();
+    const [newEntry] = await db
+      .insert(habitDailyEntries)
+      .values({
+        id,
+        userId: habit?.userId ?? entry.userId,
+        habitId: entry.habitId,
+        date: entry.date,
+        selectedOptionIds: entry.selectedOptionIds,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    return newEntry;
+  }
+
+  async getTaskDayAssignment(taskId: string, date: string): Promise<TaskDayAssignment | undefined> {
+    const [assignment] = await db
+      .select()
+      .from(taskDayAssignments)
+      .where(and(eq(taskDayAssignments.taskId, taskId), eq(taskDayAssignments.date, date)))
+      .limit(1);
+    return assignment;
+  }
+
+  async getTaskDayAssignmentsForDate(userId: string, date: string): Promise<TaskDayAssignment[]> {
+    return db
+      .select()
+      .from(taskDayAssignments)
+      .where(and(eq(taskDayAssignments.userId, userId), eq(taskDayAssignments.date, date)));
+  }
+
+  async createTaskDayAssignment(assignment: InsertTaskDayAssignment): Promise<TaskDayAssignment> {
+    const existing = await this.getTaskDayAssignment(assignment.taskId, assignment.date);
+    if (existing) return existing;
+
+    const task = await this.getTask(assignment.taskId);
+    const id = randomUUID();
+    const [newAssignment] = await db
+      .insert(taskDayAssignments)
+      .values({
+        id,
+        userId: task?.userId ?? assignment.userId,
+        taskId: assignment.taskId,
+        date: assignment.date,
+        createdAt: new Date(),
+      })
+      .returning();
+    return newAssignment;
+  }
+
+  async deleteTaskDayAssignment(taskId: string, date: string): Promise<void> {
+    await db
+      .delete(taskDayAssignments)
+      .where(and(eq(taskDayAssignments.taskId, taskId), eq(taskDayAssignments.date, date)));
   }
 }
 

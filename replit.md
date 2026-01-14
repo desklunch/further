@@ -30,6 +30,23 @@ This ensures documentation is never forgotten. Mark it "not applicable" if the c
 
 ---
 
+## PRDs
+
+| PRD | Status | Spec | Report |
+|-----|--------|------|--------|
+| v0.1 - Domains & Tasks Core | Complete | `docs/prds/prd-v0.1-spec.md` | `docs/prds/prd-0.1-report.md` |
+| v0.2 - Today, Habits, Inbox & Scheduling | In Progress | `docs/prds/prd-v0.2.b-revised-spec.md` | `docs/prds/prd-0.2-report.md` |
+
+### Implementation Report Directive
+**You MUST maintain an implementation report for each active PRD.** The report should:
+- Track feature implementation status with tables (Feature / Status / Notes)
+- Document architecture decisions made during implementation
+- Note any deviations from the PRD with justification
+- List known limitations and future work
+- Update the report as each phase/feature is completed
+
+---
+
 ## Overview
 A personal productivity web app focused on managing tasks across life domains. Built with React, Express, and PostgreSQL database.
 
