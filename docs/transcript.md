@@ -6,6 +6,17 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ---
 
+## 2026-01-14
+
+### Cross-Domain Drag Highlight Improvement
+- **15:09 UTC** | Checkpoint `bb70cd08` | Improved cross-domain drag highlight via isBeingTargeted prop
+- **15:09 UTC** | Added onDragOver handler to track hoverDomainId during drag
+- **15:09 UTC** | Added activeDomainId state to track source domain
+- **15:09 UTC** | SortableTaskList accepts isBeingTargeted prop for cross-domain highlight
+- **15:09 UTC** | Target domain now highlights when hovered with task from different domain
+
+---
+
 ## 2026-01-12
 
 ### PostgreSQL Database Integration
