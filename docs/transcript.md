@@ -16,8 +16,15 @@ Reverse chronological history of significant changes and decisions. Each entry i
 - **18:18 UTC** | Updated schema defaults: priority/effort/complexity now default to 1 (was 2)
 - **18:17 UTC** | User requested: persistent database storage for tasks and domains
 
+### Cross-Domain DnD Visual Feedback
+- **22:00 UTC** | Checkpoint `16da150e` | Added visual feedback for cross-domain drag-and-drop
+- **22:00 UTC** | Track activeTask, activeDomainId, hoverDomainId, hoverTaskId via onDragStart/Over handlers
+- **22:00 UTC** | Source domain removes dragged task from display to avoid duplicate IDs
+- **22:00 UTC** | Target domain injects preview at hover position (not just appended to end)
+- **22:00 UTC** | Added DragOverlay to show ghost of dragged task following cursor
+
 ### Cross-Domain DnD Implementation
-- **21:40 UTC** | Checkpoint `pending` | Added cross-domain drag-and-drop support
+- **21:40 UTC** | Checkpoint `7bfdf6ee` | Added cross-domain drag-and-drop support
 - **21:40 UTC** | Lifted DndContext from SortableTaskList to tasks.tsx page level
 - **21:40 UTC** | Added domainId to SortableTaskItem's useSortable data property
 - **21:40 UTC** | Added useDroppable to SortableTaskList for domain drop zones
