@@ -5,12 +5,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/lib/theme";
 import TasksPage from "@/pages/tasks";
+import ManageDomainsPage from "@/pages/manage-domains";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={TasksPage} />
+      <Route path="/domains" component={ManageDomainsPage} />
       <Route component={NotFound} />
     </Switch>
   );

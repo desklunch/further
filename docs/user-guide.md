@@ -36,10 +36,20 @@ Tasks organizes your to-dos into 9 life domains: Body, Space, Mind, Plan, Connec
 5. Click "Add Task"
 
 ### 2.2 Editing Tasks
-1. Click on any task row to open the edit drawer (slides in from the right)
-2. Modify title, domain, priority, effort, complexity, or dates
-3. Click "Save" to apply changes
-4. Click outside the drawer or press Escape to cancel
+
+#### Quick Title Edit (Inline)
+1. Hover over a task to reveal the small pencil icon next to the title
+2. Click the pencil icon or double-click the task title
+3. Type your new title
+4. Press Enter or click the checkmark to save
+5. Press Escape or click the X to cancel
+
+#### Full Edit (Drawer)
+1. Click the larger pencil icon on the right side of any task row
+2. The edit drawer slides in from the right
+3. Modify title, domain, priority, effort, complexity, or dates
+4. Click "Save" to apply changes
+5. Click outside the drawer or press Escape to cancel
 
 ### 2.3 Completing Tasks
 1. Click the checkbox circle on the left side of any task
@@ -139,12 +149,37 @@ The app comes with 9 pre-configured life domains:
 8. **Learn** - Education, skills, knowledge
 9. **Manage** - Administration, maintenance, logistics
 
-### Renaming Domains
-1. Hover over a domain header to reveal the edit (pencil) button
-2. Click the pencil icon
+### Managing Domains
+Click the gear (settings) icon in the header to open the Manage Domains page where you can:
+
+#### Creating a New Domain
+1. Enter the domain name in the "Add New Domain" field
+2. Click "Add" to create the domain
+
+#### Renaming Domains
+1. Hover over a domain row to reveal the edit (pencil) button
+2. Click the pencil icon or double-click the domain name
 3. Type the new name
 4. Press Enter or click the checkmark to save
 5. Press Escape or click the X to cancel
+
+#### Reordering Domains
+1. Hover over a domain row to reveal the drag handle (grip icon)
+2. Drag the domain to its new position
+3. The order saves automatically
+
+#### Enabling/Disabling Domains
+1. Each domain has a toggle switch on the right
+2. Toggle off to disable a domain
+3. If the domain has tasks, you'll be prompted to reassign them to another domain
+4. Disabled domains are hidden from the main task view but can be re-enabled anytime
+
+### Collapsing Domains
+On the main tasks page:
+1. Click the chevron icon next to any domain name
+2. The domain's tasks will collapse/hide
+3. Click again to expand
+4. All domains auto-expand when you start dragging a task (to enable cross-domain drops)
 
 ---
 
@@ -161,6 +196,9 @@ The app comes with 9 pre-configured life domains:
 
 | Context | Key | Action |
 |---------|-----|--------|
+| Any page | Cmd/Ctrl + N | Open new task dialog |
+| Editing task title | Enter | Save changes |
+| Editing task title | Escape | Cancel editing |
 | Editing domain name | Enter | Save changes |
 | Editing domain name | Escape | Cancel editing |
 | Edit drawer open | Escape | Close drawer |

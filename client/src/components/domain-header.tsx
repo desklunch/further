@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Pencil, GripVertical, Check, X } from "lucide-react";
+import { Plus, Pencil, GripVertical, Check, X, ChevronRight, ChevronDown } from "lucide-react";
 import type { Domain } from "@shared/schema";
 
 interface DomainHeaderProps {
@@ -12,6 +12,8 @@ interface DomainHeaderProps {
   onRename?: (domainId: string, newName: string) => void;
   showDragHandle?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
+  isCollapsed?: boolean;
+  onToggleCollapse?: (domainId: string) => void;
 }
 
 export function DomainHeader({ 
@@ -20,7 +22,9 @@ export function DomainHeader({
   onAddTask, 
   onRename,
   showDragHandle = false,
-  dragHandleProps 
+  dragHandleProps,
+  isCollapsed = false,
+  onToggleCollapse,
 }: DomainHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(domain.name);
@@ -62,6 +66,21 @@ export function DomainHeader({
   return (
     <div className="sticky top-[57px] z-30 flex items-center justify-between gap-4 border-b bg-muted/50 px-4 py-4 backdrop-blur-sm">
       <div className="flex items-center gap-2">
+        {onToggleCollapse && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onToggleCollapse(domain.id)}
+            className="h-7 w-7"
+            data-testid={`button-toggle-collapse-${domain.id}`}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </Button>
+        )}
         {showDragHandle && (
           <button
             {...dragHandleProps}

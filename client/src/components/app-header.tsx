@@ -1,4 +1,5 @@
-import { Plus } from "lucide-react";
+import { Link } from "wouter";
+import { Plus, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -17,6 +18,11 @@ export function AppHeader({ onAddTask }: AppHeaderProps) {
           <Plus className="mr-2 h-4 w-4" />
           Add Task
         </Button>
+        <Link href="/domains">
+          <Button variant="ghost" size="icon" data-testid="button-manage-domains">
+            <Settings className="h-4 w-4" />
+          </Button>
+        </Link>
         <ThemeToggle />
       </div>
     </header>

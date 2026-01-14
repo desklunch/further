@@ -8,6 +8,43 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ## 2026-01-14
 
+### v0.1 PRD Completion & Enhancements
+- **17:00 UTC** | Created prd-0.1-report.md with full implementation status
+- **16:55 UTC** | Updated user-guide.md with new features documentation
+- **16:55 UTC** | Updated replit.md with current architecture
+
+### Domain Enable/Disable with Task Reassignment
+- **16:50 UTC** | Added Switch toggle to enable/disable domains on Manage Domains page
+- **16:50 UTC** | Added dialog prompt when disabling domain with tasks
+- **16:50 UTC** | Implemented task reassignment to another domain before disable
+
+### Manage Domains Page
+- **16:45 UTC** | Created new /domains page for domain management
+- **16:45 UTC** | Added domain creation form
+- **16:45 UTC** | Added domain renaming (inline edit)
+- **16:45 UTC** | Added domain reordering via drag-and-drop
+- **16:45 UTC** | Added settings icon in header to navigate to page
+
+### Keyboard Shortcut for New Task
+- **16:40 UTC** | Added Cmd/Ctrl+N keyboard shortcut to open global add task dialog
+- **16:40 UTC** | useEffect listener on tasks page
+
+### Inline Task Title Editing
+- **16:38 UTC** | Added onTitleChange prop to TaskRowContent and SortableTaskList
+- **16:38 UTC** | Double-click task title or click edit icon to enter edit mode
+- **16:38 UTC** | Enter to save, Escape to cancel
+
+### Collapsible Domains
+- **16:35 UTC** | Added chevron toggle to domain headers for collapse/expand
+- **16:35 UTC** | Added collapsedDomains state (Set) to track collapsed domains
+- **16:35 UTC** | Auto-expand all domains when drag starts
+- **16:35 UTC** | Restore collapsed state when drag ends using ref
+
+### Code Architecture Improvements
+- **16:32 UTC** | Created use-task-drag-and-drop.ts hook to encapsulate DnD state
+- **16:32 UTC** | Created task-row-content.tsx shared component for task display
+- **16:32 UTC** | Conditional DnD: drag handles only visible when filter='all' AND sort='manual'
+
 ### DnD Guidelines Documentation
 - **16:30 UTC** | Checkpoint `324997b4` | Updated guidelines.md with comprehensive DnD implementation spec
 - **16:30 UTC** | Documented: architecture, collision detection, visual feedback, state management, handler patterns

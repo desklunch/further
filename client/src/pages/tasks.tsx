@@ -2,24 +2,12 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import {
-  DndContext,
-  pointerWithin,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type DragStartEvent,
-  type DragOverEvent,
-  type CollisionDetection,
-  DragOverlay,
-} from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
+import { useTaskDragAndDrop } from "@/hooks/use-task-drag-and-drop";
+import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { AppHeader } from "@/components/app-header";
 import { FilterSortBar } from "@/components/filter-sort-bar";
 import { DomainHeader } from "@/components/domain-header";
-import { SortableTaskList, type TaskDragData } from "@/components/sortable-task-list";
+import { SortableTaskList } from "@/components/sortable-task-list";
 import { InlineTaskForm } from "@/components/inline-task-form";
 import { TaskEditDrawer } from "@/components/task-edit-drawer";
 import { GlobalAddTaskDialog } from "@/components/global-add-task-dialog";
@@ -33,37 +21,8 @@ export default function TasksPage() {
   const [addingToDomainId, setAddingToDomainId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showGlobalAddDialog, setShowGlobalAddDialog] = useState(false);
-  const [localTasksByDomain, setLocalTasksByDomain] = useState<Record<string, Task[]>>({});
-  const [activeTask, setActiveTask] = useState<Task | null>(null);
-  const [activeDomainId, setActiveDomainId] = useState<string | null>(null);
-  const [hoverDomainId, setHoverDomainId] = useState<string | null>(null);
-  const [dropTarget, setDropTarget] = useState<{ domainId: string; index: number } | null>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
-  );
-
-  const customCollisionDetection: CollisionDetection = (args) => {
-    const pointerCollisions = pointerWithin(args);
-    
-    if (pointerCollisions.length === 0) {
-      return closestCenter(args);
-    }
-
-    const taskCollisions = pointerCollisions.filter(
-      (collision) => !String(collision.id).startsWith("domain-drop-")
-    );
-
-    if (taskCollisions.length > 0) {
-      return taskCollisions;
-    }
-
-    return pointerCollisions;
-  };
+  const [collapsedDomains, setCollapsedDomains] = useState<Set<string>>(new Set());
+  const collapsedBeforeDragRef = useRef<Set<string>>(new Set());
 
   const { data: domains = [], isLoading: domainsLoading } = useQuery<Domain[]>({
     queryKey: ["/api/domains"],
@@ -224,175 +183,35 @@ export default function TasksPage() {
     return grouped;
   }, [tasks, activeDomainsList]);
 
-  const tasksByDomain = useMemo(() => {
-    const result: Record<string, Task[]> = {};
-    for (const domainId of Object.keys(serverTasksByDomain)) {
-      result[domainId] = localTasksByDomain[domainId] || serverTasksByDomain[domainId];
-    }
-    return result;
-  }, [serverTasksByDomain, localTasksByDomain]);
+  const {
+    sensors,
+    collisionDetection,
+    activeTask,
+    hoverDomainId,
+    dropTarget,
+    localTasksByDomain,
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+    isDragActive,
+  } = useTaskDragAndDrop({
+    tasksByDomain: serverTasksByDomain,
+    onReorderTask: (payload) => reorderTaskMutation.mutate(payload),
+    onMoveTask: (payload) => moveTaskMutation.mutate(payload),
+  });
 
-  const prevTasksRef = useRef(tasks);
   useEffect(() => {
-    if (prevTasksRef.current !== tasks) {
-      setLocalTasksByDomain({});
-      prevTasksRef.current = tasks;
-    }
-  }, [tasks]);
-
-  function handleDragStart(event: DragStartEvent) {
-    const data = event.active.data.current as TaskDragData | undefined;
-    if (data?.type === "task") {
-      setActiveTask(data.task);
-      setActiveDomainId(data.domainId);
-    }
-  }
-
-  function handleDragOver(event: DragOverEvent) {
-    const { over, active } = event;
-    if (!over) {
-      setHoverDomainId(null);
-      setDropTarget(null);
-      return;
-    }
-
-    let targetDomainId: string | null = null;
-    let insertIndex: number | null = null;
-
-    if (over.data.current?.type === "domain") {
-      const domainId = over.data.current.domainId as string;
-      targetDomainId = domainId;
-      const domainTasks = tasksByDomain[domainId] || [];
-      insertIndex = domainTasks.length;
-    } else if (over.data.current?.type === "end-zone") {
-      const domainId = over.data.current.domainId as string;
-      targetDomainId = domainId;
-      insertIndex = over.data.current.index as number;
-    } else if (over.data.current?.type === "task") {
-      const taskData = over.data.current as TaskDragData;
-      const domainId = taskData.domainId;
-      targetDomainId = domainId;
-      const domainTasks = tasksByDomain[domainId] || [];
-      const overIndex = domainTasks.findIndex((t) => t.id === over.id);
-      insertIndex = overIndex >= 0 ? overIndex : domainTasks.length;
-    }
-
-    setHoverDomainId(targetDomainId);
-
-    const activeData = active.data.current as TaskDragData | undefined;
-    const sourceDomainId = activeData?.domainId;
-    const activeTaskId = activeData?.task?.id;
-
-    if (targetDomainId && insertIndex !== null) {
-      let adjustedIndex = insertIndex;
-      
-      if (sourceDomainId === targetDomainId && activeTaskId) {
-        const domainTasks = tasksByDomain[targetDomainId] || [];
-        const activeIndex = domainTasks.findIndex((t) => t.id === activeTaskId);
-        if (activeIndex !== -1 && activeIndex < insertIndex) {
-          adjustedIndex = insertIndex;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "n") {
+        e.preventDefault();
+        if (activeDomainsList.length > 0) {
+          setShowGlobalAddDialog(true);
         }
       }
-      
-      setDropTarget({ domainId: targetDomainId, index: adjustedIndex });
-    } else {
-      setDropTarget(null);
-    }
-  }
-
-  function handleDragEnd(event: DragEndEvent) {
-    setActiveTask(null);
-    setActiveDomainId(null);
-    setHoverDomainId(null);
-    setDropTarget(null);
-    const { active, over } = event;
-
-    if (!over) return;
-
-    const activeData = active.data.current as TaskDragData | undefined;
-    if (!activeData || activeData.type !== "task") return;
-
-    const sourceDomainId = activeData.domainId;
-    const draggedTask = activeData.task;
-
-    let targetDomainId: string | null = null;
-    let targetTaskId: string | null = null;
-    let endZoneIndex: number | null = null;
-
-    if (over.data.current?.type === "domain") {
-      targetDomainId = over.data.current.domainId;
-    } else if (over.data.current?.type === "end-zone") {
-      targetDomainId = over.data.current.domainId as string;
-      endZoneIndex = over.data.current.index as number;
-    } else if (over.data.current?.type === "task") {
-      targetDomainId = (over.data.current as TaskDragData).domainId;
-      targetTaskId = over.id as string;
-    } else {
-      return;
-    }
-
-    if (!targetDomainId) return;
-
-    if (sourceDomainId === targetDomainId) {
-      const domainTasks = tasksByDomain[sourceDomainId] || [];
-      const oldIndex = domainTasks.findIndex((t) => t.id === draggedTask.id);
-      let newIndex: number;
-      if (endZoneIndex !== null) {
-        newIndex = domainTasks.length - 1;
-      } else if (targetTaskId) {
-        newIndex = domainTasks.findIndex((t) => t.id === targetTaskId);
-      } else {
-        newIndex = domainTasks.length - 1;
-      }
-
-      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-        const reordered = arrayMove(domainTasks, oldIndex, newIndex);
-        setLocalTasksByDomain((prev) => ({
-          ...prev,
-          [sourceDomainId]: reordered,
-        }));
-        reorderTaskMutation.mutate({
-          domainId: sourceDomainId,
-          taskId: draggedTask.id,
-          newIndex,
-        });
-      }
-    } else {
-      const sourceTasks = tasksByDomain[sourceDomainId] || [];
-      const targetTasks = tasksByDomain[targetDomainId] || [];
-
-      const updatedSourceTasks = sourceTasks.filter((t) => t.id !== draggedTask.id);
-      const movedTask = { ...draggedTask, domainId: targetDomainId };
-
-      let insertIndex = targetTasks.length;
-      if (endZoneIndex !== null) {
-        insertIndex = targetTasks.length;
-      } else if (targetTaskId) {
-        const targetIdx = targetTasks.findIndex((t) => t.id === targetTaskId);
-        if (targetIdx !== -1) {
-          insertIndex = targetIdx;
-        }
-      }
-
-      const updatedTargetTasks = [
-        ...targetTasks.slice(0, insertIndex),
-        movedTask,
-        ...targetTasks.slice(insertIndex),
-      ];
-
-      setLocalTasksByDomain((prev) => ({
-        ...prev,
-        [sourceDomainId]: updatedSourceTasks,
-        [targetDomainId]: updatedTargetTasks,
-      }));
-
-      moveTaskMutation.mutate({
-        taskId: draggedTask.id,
-        newDomainId: targetDomainId,
-        newIndex: insertIndex,
-      });
-    }
-  }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeDomainsList]);
 
   const handleAddTask = (task: Omit<InsertTask, "userId">) => {
     createTaskMutation.mutate(task);
@@ -406,6 +225,10 @@ export default function TasksPage() {
     updateDomainMutation.mutate({ id: domainId, updates: { name: newName } });
   };
 
+  const handleTitleChange = (taskId: string, newTitle: string) => {
+    updateTaskMutation.mutate({ id: taskId, updates: { title: newTitle } });
+  };
+
   const handleGlobalAddTask = () => {
     if (activeDomainsList.length > 0) {
       setShowGlobalAddDialog(true);
@@ -414,7 +237,32 @@ export default function TasksPage() {
     }
   };
 
+  const handleToggleCollapse = (domainId: string) => {
+    setCollapsedDomains((prev) => {
+      const next = new Set(prev);
+      if (next.has(domainId)) {
+        next.delete(domainId);
+      } else {
+        next.add(domainId);
+      }
+      return next;
+    });
+  };
+
+  const wrappedHandleDragStart = (event: Parameters<typeof handleDragStart>[0]) => {
+    collapsedBeforeDragRef.current = new Set(collapsedDomains);
+    setCollapsedDomains(new Set());
+    handleDragStart(event);
+  };
+
+  const wrappedHandleDragEnd = (event: Parameters<typeof handleDragEnd>[0]) => {
+    handleDragEnd(event);
+    setCollapsedDomains(collapsedBeforeDragRef.current);
+  };
+
   const isLoading = domainsLoading || tasksLoading;
+  
+  const showDragHandles = filter === "all" && sortMode === "manual";
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -432,15 +280,17 @@ export default function TasksPage() {
         ) : (
           <DndContext
             sensors={sensors}
-            collisionDetection={customCollisionDetection}
-            onDragStart={handleDragStart}
+            collisionDetection={collisionDetection}
+            onDragStart={wrappedHandleDragStart}
             onDragOver={handleDragOver}
-            onDragEnd={handleDragEnd}
+            onDragEnd={wrappedHandleDragEnd}
           >
             <div className="mx-auto max-w-6xl pb-8" data-testid="task-list-container">
               {activeDomainsList.map((domain) => {
-                const domainTasks = tasksByDomain[domain.id] || [];
+                const domainTasks = localTasksByDomain[domain.id] || [];
                 const isAddingHere = addingToDomainId === domain.id;
+
+                const isCollapsed = collapsedDomains.has(domain.id) && !isDragActive;
 
                 return (
                   <div key={domain.id} data-testid={`domain-section-${domain.id}`}>
@@ -450,6 +300,8 @@ export default function TasksPage() {
                       onAddTask={(id) => setAddingToDomainId(id)}
                       onRename={handleRenameDomain}
                       showDragHandle={false}
+                      isCollapsed={isCollapsed}
+                      onToggleCollapse={handleToggleCollapse}
                     />
                     {isAddingHere && (
                       <InlineTaskForm
@@ -458,22 +310,26 @@ export default function TasksPage() {
                         onCancel={() => setAddingToDomainId(null)}
                       />
                     )}
-                    <SortableTaskList
-                      domainId={domain.id}
-                      tasks={domainTasks}
-                      filterMode={filter}
-                      onComplete={(id) => completeTaskMutation.mutate(id)}
-                      onReopen={(id) => reopenTaskMutation.mutate(id)}
-                      onArchive={(id) => archiveTaskMutation.mutate(id)}
-                      onEdit={setEditingTask}
-                      isBeingTargeted={
-                        activeTask !== null && hoverDomainId === domain.id
-                      }
-                      dropTargetIndex={
-                        dropTarget?.domainId === domain.id ? dropTarget.index : null
-                      }
-                      isDragActive={activeTask !== null}
-                    />
+                    {!isCollapsed && (
+                      <SortableTaskList
+                        domainId={domain.id}
+                        tasks={domainTasks}
+                        filterMode={filter}
+                        showDragHandles={showDragHandles}
+                        onComplete={(id) => completeTaskMutation.mutate(id)}
+                        onReopen={(id) => reopenTaskMutation.mutate(id)}
+                        onArchive={(id) => archiveTaskMutation.mutate(id)}
+                        onEdit={setEditingTask}
+                        onTitleChange={handleTitleChange}
+                        isBeingTargeted={
+                          activeTask !== null && hoverDomainId === domain.id
+                        }
+                        dropTargetIndex={
+                          dropTarget?.domainId === domain.id ? dropTarget.index : null
+                        }
+                        isDragActive={isDragActive}
+                      />
+                    )}
                   </div>
                 );
               })}
