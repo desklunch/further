@@ -72,7 +72,6 @@ export function SortableTaskItem({
     transform,
     transition,
     isDragging,
-    isOver,
   } = useSortable({
     id: task.id,
     data: {
@@ -100,9 +99,7 @@ export function SortableTaskItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex items-center gap-3 border-b px-4 py-3 hover-elevate bg-background ${
-        isOver && !isDragging ? "ring-2 ring-primary" : ""
-      }`}
+      className="group flex items-center gap-3 border-b px-4 py-3 hover-elevate bg-background"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       data-testid={`task-row-${task.id}`}

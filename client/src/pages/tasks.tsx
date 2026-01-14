@@ -277,9 +277,20 @@ export default function TasksPage() {
 
     const activeData = active.data.current as TaskDragData | undefined;
     const sourceDomainId = activeData?.domainId;
+    const activeTaskId = activeData?.task?.id;
 
-    if (targetDomainId && sourceDomainId && targetDomainId !== sourceDomainId && insertIndex !== null) {
-      setDropTarget({ domainId: targetDomainId, index: insertIndex });
+    if (targetDomainId && insertIndex !== null) {
+      let adjustedIndex = insertIndex;
+      
+      if (sourceDomainId === targetDomainId && activeTaskId) {
+        const domainTasks = tasksByDomain[targetDomainId] || [];
+        const activeIndex = domainTasks.findIndex((t) => t.id === activeTaskId);
+        if (activeIndex !== -1 && activeIndex < insertIndex) {
+          adjustedIndex = insertIndex;
+        }
+      }
+      
+      setDropTarget({ domainId: targetDomainId, index: adjustedIndex });
     } else {
       setDropTarget(null);
     }
