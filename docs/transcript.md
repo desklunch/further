@@ -16,13 +16,13 @@ Reverse chronological history of significant changes and decisions. Each entry i
 - **18:18 UTC** | Updated schema defaults: priority/effort/complexity now default to 1 (was 2)
 - **18:17 UTC** | User requested: persistent database storage for tasks and domains
 
-### DnD Refactor - Standard dnd-kit Patterns
-- **20:15 UTC** | Checkpoint `pending` | Refactored DnD to use standard dnd-kit patterns without ID prefix parsing
-- **20:15 UTC** | Changed: Use active.data.current and over.data.current for type detection
-- **20:15 UTC** | Added typed interfaces: TaskDragData, DomainDragData, DomainDropData
-- **20:15 UTC** | Updated droppable-domain.tsx: Use "domain-drop" type to distinguish from sortable domains
-- **20:15 UTC** | Simplified handleDragStart/handleDragOver/handleDragEnd to rely on data properties
-- **20:10 UTC** | User requested: DnD refactor to diagnose if issues are framework or implementation related
+### DnD Complete Rewrite - Minimal Pattern
+- **21:00 UTC** | Checkpoint `pending` | Complete DnD rewrite from scratch using minimal dnd-kit pattern
+- **21:00 UTC** | Created new SortableTaskList component: each domain has its own DndContext + SortableContext
+- **21:00 UTC** | Uses local state (localTasks) with arrayMove for immediate optimistic updates
+- **21:00 UTC** | Stripped ALL old DnD code from tasks.tsx (no more SortableDomainSection, drag handlers, overlays)
+- **21:00 UTC** | SortableTaskItem uses useSortable with just task.id - simplest possible pattern
+- **20:45 UTC** | User requested: Start DnD from scratch, implement incrementally, minimal code
 
 ### Mobile Responsive Task Layout + DnD Filter Fix
 - **19:30 UTC** | Checkpoint `eccab70e` | Added responsive layout: badges stack below task name on mobile, inline on desktop
