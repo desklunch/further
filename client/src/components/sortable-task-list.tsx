@@ -38,7 +38,7 @@ function DropIndicator() {
 }
 
 function EndDropZone({ domainId, taskCount }: { domainId: string; taskCount: number }) {
-  const { setNodeRef, isOver } = useDroppable({
+  const { setNodeRef } = useDroppable({
     id: `end-${domainId}`,
     data: {
       type: "end-zone",
@@ -50,9 +50,7 @@ function EndDropZone({ domainId, taskCount }: { domainId: string; taskCount: num
   return (
     <div
       ref={setNodeRef}
-      className={`h-12 mx-4 rounded border-2 border-dashed transition-colors ${
-        isOver ? "border-primary bg-primary/10" : "border-muted-foreground/30"
-      }`}
+      className="h-12"
     />
   );
 }
