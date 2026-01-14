@@ -151,6 +151,7 @@ export const habitDefinitions = pgTable("habit_definitions", {
 
 export const insertHabitDefinitionSchema = createInsertSchema(habitDefinitions).omit({
   id: true,
+  sortOrder: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
@@ -173,6 +174,7 @@ export const habitOptions = pgTable("habit_options", {
 
 export const insertHabitOptionSchema = createInsertSchema(habitOptions).omit({
   id: true,
+  sortOrder: true,
   createdAt: true,
 }).extend({
   habitId: z.string().min(1, "Habit is required"),

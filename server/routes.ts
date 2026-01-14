@@ -388,7 +388,8 @@ export async function registerRoutes(
 
   app.post("/api/habits", async (req, res) => {
     try {
-      const habitData = { ...req.body, userId: DEFAULT_USER_ID };
+      const { options: optionLabels, ...habitFields } = req.body;
+      const habitData = { ...habitFields, userId: DEFAULT_USER_ID };
       const result = insertHabitDefinitionSchema.extend({ userId: z.string() }).safeParse(habitData);
       
       if (!result.success) {
@@ -396,8 +397,19 @@ export async function registerRoutes(
       }
 
       const habit = await storage.createHabitDefinition(result.data);
-      res.status(201).json(habit);
+      
+      if (Array.isArray(optionLabels)) {
+        for (const label of optionLabels) {
+          if (typeof label === "string" && label.trim()) {
+            await storage.createHabitOption({ habitId: habit.id, label: label.trim() });
+          }
+        }
+      }
+
+      const options = await storage.getHabitOptions(habit.id);
+      res.status(201).json({ ...habit, options });
     } catch (error) {
+      console.error("Create habit error:", error);
       res.status(500).json({ error: "Failed to create habit" });
     }
   });
