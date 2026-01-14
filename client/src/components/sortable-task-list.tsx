@@ -1,24 +1,22 @@
-import { useState, useEffect } from "react";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
+import { useState } from "react";
 import {
   SortableContext,
   verticalListSortingStrategy,
   useSortable,
-  arrayMove,
 } from "@dnd-kit/sortable";
+import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GripVertical, Pencil, Trash2, Calendar, Zap, BarChart3, Target } from "lucide-react";
 import type { Task, FilterMode } from "@shared/schema";
+
+export interface TaskDragData {
+  type: "task";
+  task: Task;
+  domainId: string;
+}
 
 interface SortableTaskListProps {
   domainId: string;
@@ -28,7 +26,6 @@ interface SortableTaskListProps {
   onReopen: (taskId: string) => void;
   onArchive: (taskId: string) => void;
   onEdit: (task: Task) => void;
-  onReorder: (domainId: string, taskId: string, newIndex: number) => void;
 }
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -39,6 +36,7 @@ function formatDate(dateStr: string | null | undefined): string {
 
 interface SortableTaskItemProps {
   task: Task;
+  domainId: string;
   filterMode: FilterMode;
   onComplete: (taskId: string) => void;
   onReopen: (taskId: string) => void;
@@ -46,8 +44,9 @@ interface SortableTaskItemProps {
   onEdit: (task: Task) => void;
 }
 
-function SortableTaskItem({
+export function SortableTaskItem({
   task,
+  domainId,
   filterMode,
   onComplete,
   onReopen,
@@ -65,7 +64,14 @@ function SortableTaskItem({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id });
+  } = useSortable({
+    id: task.id,
+    data: {
+      type: "task",
+      task,
+      domainId,
+    } as TaskDragData,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -85,7 +91,7 @@ function SortableTaskItem({
     <div
       ref={setNodeRef}
       style={style}
-      className="group flex items-center gap-3 border-b px-4 py-3 hover-elevate"
+      className="group flex items-center gap-3 border-b px-4 py-3 hover-elevate bg-background"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       data-testid={`task-row-${task.id}`}
@@ -188,67 +194,43 @@ export function SortableTaskList({
   onReopen,
   onArchive,
   onEdit,
-  onReorder,
 }: SortableTaskListProps) {
-  const [localTasks, setLocalTasks] = useState(tasks);
-  
-  useEffect(() => {
-    setLocalTasks(tasks);
-  }, [tasks]);
+  const taskIds = tasks.map((t) => t.id);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
-  );
-
-  const taskIds = localTasks.map((t) => t.id);
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    
-    if (!over) return;
-    if (active.id === over.id) return;
-
-    const oldIndex = taskIds.indexOf(active.id as string);
-    const newIndex = taskIds.indexOf(over.id as string);
-
-    if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-      const newOrder = arrayMove(localTasks, oldIndex, newIndex);
-      setLocalTasks(newOrder);
-      onReorder(domainId, active.id as string, newIndex);
-    }
-  }
-
-  if (localTasks.length === 0) {
-    return (
-      <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-        No tasks
-      </div>
-    );
-  }
+  const { setNodeRef, isOver } = useDroppable({
+    id: `domain-drop-${domainId}`,
+    data: {
+      type: "domain",
+      domainId,
+    },
+  });
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
+    <div
+      ref={setNodeRef}
+      className={`min-h-[48px] transition-colors ${isOver ? "bg-accent/30" : ""}`}
+      data-testid={`droppable-domain-${domainId}`}
     >
       <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-        {localTasks.map((task) => (
-          <SortableTaskItem
-            key={task.id}
-            task={task}
-            filterMode={filterMode}
-            onComplete={onComplete}
-            onReopen={onReopen}
-            onArchive={onArchive}
-            onEdit={onEdit}
-          />
-        ))}
+        {tasks.length === 0 ? (
+          <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+            No tasks
+          </div>
+        ) : (
+          tasks.map((task) => (
+            <SortableTaskItem
+              key={task.id}
+              task={task}
+              domainId={domainId}
+              filterMode={filterMode}
+              onComplete={onComplete}
+              onReopen={onReopen}
+              onArchive={onArchive}
+              onEdit={onEdit}
+            />
+          ))
+        )}
       </SortableContext>
-    </DndContext>
+    </div>
   );
 }

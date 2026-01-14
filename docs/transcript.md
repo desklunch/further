@@ -16,6 +16,16 @@ Reverse chronological history of significant changes and decisions. Each entry i
 - **18:18 UTC** | Updated schema defaults: priority/effort/complexity now default to 1 (was 2)
 - **18:17 UTC** | User requested: persistent database storage for tasks and domains
 
+### Cross-Domain DnD Implementation
+- **21:40 UTC** | Checkpoint `pending` | Added cross-domain drag-and-drop support
+- **21:40 UTC** | Lifted DndContext from SortableTaskList to tasks.tsx page level
+- **21:40 UTC** | Added domainId to SortableTaskItem's useSortable data property
+- **21:40 UTC** | Added useDroppable to SortableTaskList for domain drop zones
+- **21:40 UTC** | handleDragEnd detects cross-domain drops via source/target domainId comparison
+- **21:40 UTC** | Cross-domain: updates localTasksByDomain optimistically + moveTaskMutation
+- **21:40 UTC** | Fixed infinite render loop: useEffect with ref instead of useMemo side-effect
+- **21:40 UTC** | Fixed insertion position: now respects targetTaskId for drop location
+
 ### DnD Complete Rewrite - Minimal Pattern
 - **21:00 UTC** | Checkpoint `pending` | Complete DnD rewrite from scratch using minimal dnd-kit pattern
 - **21:00 UTC** | Created new SortableTaskList component: each domain has its own DndContext + SortableContext

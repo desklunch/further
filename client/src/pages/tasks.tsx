@@ -1,11 +1,21 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  DragOverlay,
+} from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 import { AppHeader } from "@/components/app-header";
 import { FilterSortBar } from "@/components/filter-sort-bar";
 import { DomainHeader } from "@/components/domain-header";
-import { SortableTaskList } from "@/components/sortable-task-list";
+import { SortableTaskList, type TaskDragData } from "@/components/sortable-task-list";
 import { InlineTaskForm } from "@/components/inline-task-form";
 import { TaskEditDrawer } from "@/components/task-edit-drawer";
 import { GlobalAddTaskDialog } from "@/components/global-add-task-dialog";
@@ -19,6 +29,15 @@ export default function TasksPage() {
   const [addingToDomainId, setAddingToDomainId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showGlobalAddDialog, setShowGlobalAddDialog] = useState(false);
+  const [localTasksByDomain, setLocalTasksByDomain] = useState<Record<string, Task[]>>({});
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
   const { data: domains = [], isLoading: domainsLoading } = useQuery<Domain[]>({
     queryKey: ["/api/domains"],
@@ -140,12 +159,30 @@ export default function TasksPage() {
     },
   });
 
+  const moveTaskMutation = useMutation({
+    mutationFn: async (payload: { taskId: string; newDomainId: string; newIndex: number }) => {
+      await apiRequest("PATCH", `/api/tasks/${payload.taskId}`, {
+        domainId: payload.newDomainId,
+      });
+      await apiRequest("POST", `/api/domains/${payload.newDomainId}/tasks/reorder`, {
+        taskId: payload.taskId,
+        newIndex: payload.newIndex,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to move task", variant: "destructive" });
+    },
+  });
+
   const activeDomainsList = useMemo(
     () => domains.filter((d) => d.isActive).sort((a, b) => a.sortOrder - b.sortOrder),
     [domains]
   );
 
-  const tasksByDomain = useMemo(() => {
+  const serverTasksByDomain = useMemo(() => {
     const grouped: Record<string, Task[]> = {};
     activeDomainsList.forEach((d) => {
       grouped[d.id] = [];
@@ -160,6 +197,101 @@ export default function TasksPage() {
     });
     return grouped;
   }, [tasks, activeDomainsList]);
+
+  const tasksByDomain = useMemo(() => {
+    const result: Record<string, Task[]> = {};
+    for (const domainId of Object.keys(serverTasksByDomain)) {
+      result[domainId] = localTasksByDomain[domainId] || serverTasksByDomain[domainId];
+    }
+    return result;
+  }, [serverTasksByDomain, localTasksByDomain]);
+
+  const prevTasksRef = useRef(tasks);
+  useEffect(() => {
+    if (prevTasksRef.current !== tasks) {
+      setLocalTasksByDomain({});
+      prevTasksRef.current = tasks;
+    }
+  }, [tasks]);
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+
+    if (!over) return;
+
+    const activeData = active.data.current as TaskDragData | undefined;
+    if (!activeData || activeData.type !== "task") return;
+
+    const sourceDomainId = activeData.domainId;
+    const draggedTask = activeData.task;
+
+    let targetDomainId: string | null = null;
+    let targetTaskId: string | null = null;
+
+    if (over.data.current?.type === "domain") {
+      targetDomainId = over.data.current.domainId;
+    } else if (over.data.current?.type === "task") {
+      targetDomainId = (over.data.current as TaskDragData).domainId;
+      targetTaskId = over.id as string;
+    } else {
+      return;
+    }
+
+    if (!targetDomainId) return;
+
+    if (sourceDomainId === targetDomainId) {
+      const domainTasks = tasksByDomain[sourceDomainId] || [];
+      const oldIndex = domainTasks.findIndex((t) => t.id === draggedTask.id);
+      const newIndex = targetTaskId
+        ? domainTasks.findIndex((t) => t.id === targetTaskId)
+        : domainTasks.length - 1;
+
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        const reordered = arrayMove(domainTasks, oldIndex, newIndex);
+        setLocalTasksByDomain((prev) => ({
+          ...prev,
+          [sourceDomainId]: reordered,
+        }));
+        reorderTaskMutation.mutate({
+          domainId: sourceDomainId,
+          taskId: draggedTask.id,
+          newIndex,
+        });
+      }
+    } else {
+      const sourceTasks = tasksByDomain[sourceDomainId] || [];
+      const targetTasks = tasksByDomain[targetDomainId] || [];
+
+      const updatedSourceTasks = sourceTasks.filter((t) => t.id !== draggedTask.id);
+      const movedTask = { ...draggedTask, domainId: targetDomainId };
+
+      let insertIndex = targetTasks.length;
+      if (targetTaskId) {
+        const targetIdx = targetTasks.findIndex((t) => t.id === targetTaskId);
+        if (targetIdx !== -1) {
+          insertIndex = targetIdx;
+        }
+      }
+
+      const updatedTargetTasks = [
+        ...targetTasks.slice(0, insertIndex),
+        movedTask,
+        ...targetTasks.slice(insertIndex),
+      ];
+
+      setLocalTasksByDomain((prev) => ({
+        ...prev,
+        [sourceDomainId]: updatedSourceTasks,
+        [targetDomainId]: updatedTargetTasks,
+      }));
+
+      moveTaskMutation.mutate({
+        taskId: draggedTask.id,
+        newDomainId: targetDomainId,
+        newIndex: insertIndex,
+      });
+    }
+  }
 
   const handleAddTask = (task: Omit<InsertTask, "userId">) => {
     createTaskMutation.mutate(task);
@@ -181,10 +313,6 @@ export default function TasksPage() {
     }
   };
 
-  const handleReorderTask = (domainId: string, taskId: string, newIndex: number) => {
-    reorderTaskMutation.mutate({ domainId, taskId, newIndex });
-  };
-
   const isLoading = domainsLoading || tasksLoading;
 
   return (
@@ -201,41 +329,46 @@ export default function TasksPage() {
         {isLoading ? (
           <TasksLoadingSkeleton />
         ) : (
-          <div className="mx-auto max-w-6xl pb-8" data-testid="task-list-container">
-            {activeDomainsList.map((domain) => {
-              const domainTasks = tasksByDomain[domain.id] || [];
-              const isAddingHere = addingToDomainId === domain.id;
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="mx-auto max-w-6xl pb-8" data-testid="task-list-container">
+              {activeDomainsList.map((domain) => {
+                const domainTasks = tasksByDomain[domain.id] || [];
+                const isAddingHere = addingToDomainId === domain.id;
 
-              return (
-                <div key={domain.id} data-testid={`domain-section-${domain.id}`}>
-                  <DomainHeader
-                    domain={domain}
-                    taskCount={domainTasks.length}
-                    onAddTask={(id) => setAddingToDomainId(id)}
-                    onRename={handleRenameDomain}
-                    showDragHandle={false}
-                  />
-                  {isAddingHere && (
-                    <InlineTaskForm
-                      domainId={domain.id}
-                      onSubmit={handleAddTask}
-                      onCancel={() => setAddingToDomainId(null)}
+                return (
+                  <div key={domain.id} data-testid={`domain-section-${domain.id}`}>
+                    <DomainHeader
+                      domain={domain}
+                      taskCount={domainTasks.length}
+                      onAddTask={(id) => setAddingToDomainId(id)}
+                      onRename={handleRenameDomain}
+                      showDragHandle={false}
                     />
-                  )}
-                  <SortableTaskList
-                    domainId={domain.id}
-                    tasks={domainTasks}
-                    filterMode={filter}
-                    onComplete={(id) => completeTaskMutation.mutate(id)}
-                    onReopen={(id) => reopenTaskMutation.mutate(id)}
-                    onArchive={(id) => archiveTaskMutation.mutate(id)}
-                    onEdit={setEditingTask}
-                    onReorder={handleReorderTask}
-                  />
-                </div>
-              );
-            })}
-          </div>
+                    {isAddingHere && (
+                      <InlineTaskForm
+                        domainId={domain.id}
+                        onSubmit={handleAddTask}
+                        onCancel={() => setAddingToDomainId(null)}
+                      />
+                    )}
+                    <SortableTaskList
+                      domainId={domain.id}
+                      tasks={domainTasks}
+                      filterMode={filter}
+                      onComplete={(id) => completeTaskMutation.mutate(id)}
+                      onReopen={(id) => reopenTaskMutation.mutate(id)}
+                      onArchive={(id) => archiveTaskMutation.mutate(id)}
+                      onEdit={setEditingTask}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </DndContext>
         )}
       </main>
 
