@@ -35,9 +35,9 @@ export function DomainHeader({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { setNodeRef } = useDroppable({
-    id: `domain-drop-${domain.id}`,
+    id: `domain-header-drop-${domain.id}`,
     data: {
-      type: "domain",
+      type: "domain-header",
       domainId: domain.id,
     },
     disabled: !isCollapsed,

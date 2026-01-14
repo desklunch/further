@@ -65,29 +65,32 @@ export function useTaskDragAndDrop({
       return closestCenter(args);
     }
 
-    // Prioritize domain-drop zones (for collapsed domains) when pointer is directly over them
-    const domainDropCollisions = pointerCollisions.filter(
-      (collision) => String(collision.id).startsWith("domain-drop-")
+    // Prioritize domain-header-drop zones (for collapsed domains) when pointer is directly over them
+    const domainHeaderCollisions = pointerCollisions.filter(
+      (collision) => String(collision.id).startsWith("domain-header-drop-")
     );
 
-    // If there's a direct hit on a domain-drop zone, prioritize it
-    if (domainDropCollisions.length > 0) {
-      // Check if the pointer is within the domain-drop zone's rect
-      const firstDomainDrop = domainDropCollisions[0];
-      const container = args.droppableContainers.find(c => c.id === firstDomainDrop.id);
+    // If there's a direct hit on a domain-header-drop zone, prioritize it
+    if (domainHeaderCollisions.length > 0) {
+      const firstHeader = domainHeaderCollisions[0];
+      const container = args.droppableContainers.find(c => c.id === firstHeader.id);
       if (container?.rect.current) {
         const rect = container.rect.current;
         const pointer = args.pointerCoordinates;
         if (pointer && 
             pointer.x >= rect.left && pointer.x <= rect.right &&
             pointer.y >= rect.top && pointer.y <= rect.bottom) {
-          return domainDropCollisions;
+          return domainHeaderCollisions;
         }
       }
     }
 
+    // Filter out domain-drop and domain-header-drop to get task collisions
     const taskCollisions = pointerCollisions.filter(
-      (collision) => !String(collision.id).startsWith("domain-drop-")
+      (collision) => {
+        const id = String(collision.id);
+        return !id.startsWith("domain-drop-") && !id.startsWith("domain-header-drop-");
+      }
     );
 
     if (taskCollisions.length > 0) {
@@ -132,7 +135,7 @@ export function useTaskDragAndDrop({
     let targetDomainId: string | null = null;
     let insertIndex: number | null = null;
 
-    if (over.data.current?.type === "domain") {
+    if (over.data.current?.type === "domain" || over.data.current?.type === "domain-header") {
       const domainId = over.data.current.domainId as string;
       targetDomainId = domainId;
       const domainTasks = mergedTasksByDomain[domainId] || [];
@@ -193,7 +196,7 @@ export function useTaskDragAndDrop({
     let targetTaskId: string | null = null;
     let endZoneIndex: number | null = null;
 
-    if (over.data.current?.type === "domain") {
+    if (over.data.current?.type === "domain" || over.data.current?.type === "domain-header") {
       targetDomainId = over.data.current.domainId;
     } else if (over.data.current?.type === "end-zone") {
       targetDomainId = over.data.current.domainId as string;
