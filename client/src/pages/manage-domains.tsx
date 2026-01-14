@@ -255,7 +255,7 @@ export default function ManageDomainsPage() {
 
   const reorderDomainsMutation = useMutation({
     mutationFn: async (domainIds: string[]) => {
-      return apiRequest("POST", "/api/domains/reorder", { domainIds });
+      return apiRequest("POST", "/api/domains/reorder", { ordered_domain_ids: domainIds });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/domains"] });
