@@ -14,8 +14,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { 
   Plus, 
   X, 
-  Trash2, 
-  Edit2,
   Sparkles 
 } from "lucide-react";
 import type { Domain, HabitDefinition, HabitOption } from "@shared/schema";
@@ -80,20 +78,6 @@ export default function HabitsPage() {
     },
     onError: () => {
       toast({ title: "Failed to update habit", variant: "destructive" });
-    },
-  });
-
-  const deleteHabitMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiRequest("DELETE", `/api/habits/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/today"] });
-      toast({ title: "Habit deleted" });
-    },
-    onError: () => {
-      toast({ title: "Failed to delete habit", variant: "destructive" });
     },
   });
 
@@ -361,25 +345,11 @@ export default function HabitsPage() {
                             {habit.selectionType === "single" ? "Pick one" : `Pick ${habit.minRequired || 1}+`}
                           </Badge>
                         </CardTitle>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={habit.isActive}
-                            onCheckedChange={() => handleToggleActive(habit)}
-                            data-testid={`switch-habit-active-${habit.id}`}
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              if (confirm("Delete this habit?")) {
-                                deleteHabitMutation.mutate(habit.id);
-                              }
-                            }}
-                            data-testid={`button-delete-habit-${habit.id}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <Switch
+                          checked={habit.isActive}
+                          onCheckedChange={() => handleToggleActive(habit)}
+                          data-testid={`switch-habit-active-${habit.id}`}
+                        />
                       </div>
                     </CardHeader>
                     <CardContent>
