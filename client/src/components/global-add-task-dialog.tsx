@@ -43,8 +43,8 @@ export function GlobalAddTaskDialog({
   const [title, setTitle] = useState("");
   const [domainId, setDomainId] = useState("");
   const [priority, setPriority] = useState("1");
-  const [effortPoints, setEffortPoints] = useState("1");
-  const [complexity, setComplexity] = useState("1");
+  const [effortPoints, setEffortPoints] = useState<string | null>(null);
+  const [valence, setValence] = useState("0");
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
 
@@ -57,8 +57,8 @@ export function GlobalAddTaskDialog({
       domainId,
       status: "open",
       priority: parseInt(priority),
-      effortPoints: parseInt(effortPoints),
-      complexity: parseInt(complexity),
+      effortPoints: effortPoints !== null ? parseInt(effortPoints) : null,
+      valence: parseInt(valence),
       dueDate: dueDate ? format(dueDate, "yyyy-MM-dd") : null,
       scheduledDate: scheduledDate ? format(scheduledDate, "yyyy-MM-dd") : null,
     });
@@ -71,8 +71,8 @@ export function GlobalAddTaskDialog({
     setTitle("");
     setDomainId("");
     setPriority("1");
-    setEffortPoints("1");
-    setComplexity("1");
+    setEffortPoints(null);
+    setValence("0");
     setDueDate(undefined);
     setScheduledDate(undefined);
   };
@@ -141,11 +141,12 @@ export function GlobalAddTaskDialog({
               <Label className="text-xs">Effort</Label>
               <ToggleGroup
                 type="single"
-                value={effortPoints}
-                onValueChange={(val) => val && setEffortPoints(val)}
+                value={effortPoints === null ? "unknown" : effortPoints}
+                onValueChange={(val) => setEffortPoints(val === "unknown" ? null : val)}
                 className="justify-start"
                 data-testid="toggle-global-task-effort"
               >
+                <ToggleGroupItem value="unknown" aria-label="Unknown effort">?</ToggleGroupItem>
                 <ToggleGroupItem value="1" aria-label="Low effort">1</ToggleGroupItem>
                 <ToggleGroupItem value="2" aria-label="Medium effort">2</ToggleGroupItem>
                 <ToggleGroupItem value="3" aria-label="High effort">3</ToggleGroupItem>
@@ -153,17 +154,17 @@ export function GlobalAddTaskDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs">Complexity</Label>
+              <Label className="text-xs">Valence</Label>
               <ToggleGroup
                 type="single"
-                value={complexity}
-                onValueChange={(val) => val && setComplexity(val)}
+                value={valence}
+                onValueChange={(val) => val && setValence(val)}
                 className="justify-start"
-                data-testid="toggle-global-task-complexity"
+                data-testid="toggle-global-task-valence"
               >
-                <ToggleGroupItem value="1" aria-label="Low complexity">1</ToggleGroupItem>
-                <ToggleGroupItem value="2" aria-label="Medium complexity">2</ToggleGroupItem>
-                <ToggleGroupItem value="3" aria-label="High complexity">3</ToggleGroupItem>
+                <ToggleGroupItem value="-1" aria-label="Avoid">-1</ToggleGroupItem>
+                <ToggleGroupItem value="0" aria-label="Neutral">0</ToggleGroupItem>
+                <ToggleGroupItem value="1" aria-label="Enjoy">+1</ToggleGroupItem>
               </ToggleGroup>
             </div>
           </div>

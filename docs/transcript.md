@@ -8,6 +8,13 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ## 2026-01-14
 
+### v0.2 Bug Fixes
+- **20:00 UTC** | Checkpoint TBD | Fixed v0.2 implementation issues per PRD review
+- **20:00 UTC** | Inbox triage: Added dialog prompts for domain selection and scheduled date
+- **19:55 UTC** | Task forms: Replaced "Complexity" with "Valence" (-1/0/+1) field
+- **19:50 UTC** | Task forms: Added "?" (unknown) option for effort (null value)
+- **19:45 UTC** | Today View: Added refetchOnMount/WindowFocus to prevent stale data
+
 ### v0.2 Implementation Complete
 - **19:00 UTC** | Checkpoint `10e02b2c` | v0.2 Today, Habits, Inbox & Scheduling complete
 - **19:00 UTC** | Phase 1-5, 7 implemented; Phase 6 (undo) skipped as nice-to-have

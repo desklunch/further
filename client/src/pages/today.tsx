@@ -10,6 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Plus, 
   CalendarDays, 
@@ -42,10 +45,26 @@ interface TodayData {
   assignedTasks: Task[];
 }
 
+interface TriageDialogState {
+  open: boolean;
+  action: "add" | "schedule";
+  inboxItem: InboxItem | null;
+  domainId: string;
+  scheduledDate: string;
+}
+
 export default function TodayPage() {
   const { toast } = useToast();
   const [newInboxItem, setNewInboxItem] = useState("");
   const todayStr = format(new Date(), "yyyy-MM-dd");
+  
+  const [triageDialog, setTriageDialog] = useState<TriageDialogState>({
+    open: false,
+    action: "add",
+    inboxItem: null,
+    domainId: "",
+    scheduledDate: todayStr,
+  });
 
   const { data: domains = [] } = useQuery<Domain[]>({
     queryKey: ["/api/domains"],
@@ -60,6 +79,8 @@ export default function TodayPage() {
       if (!res.ok) throw new Error("Failed to fetch today data");
       return res.json();
     },
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   const createInboxItemMutation = useMutation({
@@ -170,6 +191,32 @@ export default function TodayPage() {
     }
     
     saveHabitEntryMutation.mutate({ habitId: habit.id, selectedOptionIds: newSelected });
+  };
+
+  const openTriageDialog = (item: InboxItem, action: "add" | "schedule") => {
+    setTriageDialog({
+      open: true,
+      action,
+      inboxItem: item,
+      domainId: domains[0]?.id || "",
+      scheduledDate: todayStr,
+    });
+  };
+
+  const closeTriageDialog = () => {
+    setTriageDialog(prev => ({ ...prev, open: false, inboxItem: null }));
+  };
+
+  const handleTriageSubmit = () => {
+    if (!triageDialog.inboxItem || !triageDialog.domainId) return;
+    
+    triageInboxMutation.mutate({
+      id: triageDialog.inboxItem.id,
+      action: triageDialog.action,
+      domainId: triageDialog.domainId,
+      scheduledDate: triageDialog.action === "schedule" ? triageDialog.scheduledDate : undefined,
+    });
+    closeTriageDialog();
   };
 
   const getValenceIcon = (valence: number | null) => {
@@ -391,13 +438,9 @@ export default function TodayPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => triageInboxMutation.mutate({ 
-                              id: item.id, 
-                              action: "add",
-                              domainId: domains[0]?.id 
-                            })}
+                            onClick={() => openTriageDialog(item, "add")}
                             disabled={!domains.length}
-                            title="Add to tasks"
+                            title="Add to today"
                             data-testid={`button-triage-add-${item.id}`}
                           >
                             <Check className="h-4 w-4" />
@@ -405,14 +448,9 @@ export default function TodayPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => triageInboxMutation.mutate({ 
-                              id: item.id, 
-                              action: "schedule",
-                              domainId: domains[0]?.id,
-                              scheduledDate: todayStr
-                            })}
+                            onClick={() => openTriageDialog(item, "schedule")}
                             disabled={!domains.length}
-                            title="Schedule for today"
+                            title="Schedule"
                             data-testid={`button-triage-schedule-${item.id}`}
                           >
                             <CalendarDays className="h-4 w-4" />
@@ -457,6 +495,70 @@ export default function TodayPage() {
           )}
         </div>
       </main>
+
+      <Dialog open={triageDialog.open} onOpenChange={(open) => !open && closeTriageDialog()}>
+        <DialogContent data-testid="dialog-triage">
+          <DialogHeader>
+            <DialogTitle>
+              {triageDialog.action === "add" ? "Add to Today" : "Schedule Task"}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {triageDialog.inboxItem && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                "{triageDialog.inboxItem.title}"
+              </p>
+              
+              <div className="space-y-2">
+                <Label htmlFor="triage-domain">Domain</Label>
+                <Select
+                  value={triageDialog.domainId}
+                  onValueChange={(value) => setTriageDialog(prev => ({ ...prev, domainId: value }))}
+                >
+                  <SelectTrigger id="triage-domain" data-testid="select-triage-domain">
+                    <SelectValue placeholder="Select a domain" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {domains.filter(d => d.isActive).map(domain => (
+                      <SelectItem key={domain.id} value={domain.id}>
+                        {domain.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {triageDialog.action === "schedule" && (
+                <div className="space-y-2">
+                  <Label htmlFor="triage-date">Scheduled Date</Label>
+                  <Input
+                    id="triage-date"
+                    type="date"
+                    value={triageDialog.scheduledDate}
+                    onChange={(e) => setTriageDialog(prev => ({ ...prev, scheduledDate: e.target.value }))}
+                    min={todayStr}
+                    data-testid="input-triage-date"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeTriageDialog} data-testid="button-triage-cancel">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleTriageSubmit} 
+              disabled={!triageDialog.domainId || triageInboxMutation.isPending}
+              data-testid="button-triage-confirm"
+            >
+              {triageDialog.action === "add" ? "Add to Today" : "Schedule"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
