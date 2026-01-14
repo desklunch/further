@@ -268,7 +268,7 @@ export function SortableTaskList({
               </div>
             ))}
             {dropTargetIndex !== null && dropTargetIndex >= tasks.length && <DropIndicator />}
-            {isDragActive && <EndDropZone domainId={domainId} taskCount={tasks.length} />}
+            {isDragActive && isBeingTargeted && <EndDropZone domainId={domainId} taskCount={tasks.length} />}
           </>
         )}
       </SortableContext>

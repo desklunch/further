@@ -467,9 +467,7 @@ export default function TasksPage() {
                       onArchive={(id) => archiveTaskMutation.mutate(id)}
                       onEdit={setEditingTask}
                       isBeingTargeted={
-                        activeDomainId !== null &&
-                        activeDomainId !== domain.id &&
-                        hoverDomainId === domain.id
+                        activeTask !== null && hoverDomainId === domain.id
                       }
                       dropTargetIndex={
                         dropTarget?.domainId === domain.id ? dropTarget.index : null
