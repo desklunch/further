@@ -4,6 +4,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   DndContext,
+  pointerWithin,
   closestCenter,
   PointerSensor,
   useSensor,
@@ -11,6 +12,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
   type DragOverEvent,
+  type CollisionDetection,
   DragOverlay,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
@@ -43,6 +45,24 @@ export default function TasksPage() {
       },
     })
   );
+
+  const customCollisionDetection: CollisionDetection = (args) => {
+    const pointerCollisions = pointerWithin(args);
+    
+    if (pointerCollisions.length === 0) {
+      return closestCenter(args);
+    }
+
+    const taskCollisions = pointerCollisions.filter(
+      (collision) => !String(collision.id).startsWith("domain-drop-")
+    );
+
+    if (taskCollisions.length > 0) {
+      return taskCollisions;
+    }
+
+    return pointerCollisions;
+  };
 
   const { data: domains = [], isLoading: domainsLoading } = useQuery<Domain[]>({
     queryKey: ["/api/domains"],
@@ -363,7 +383,7 @@ export default function TasksPage() {
         ) : (
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCenter}
+            collisionDetection={customCollisionDetection}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
