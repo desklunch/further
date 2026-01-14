@@ -55,9 +55,9 @@ v0.2 - Today, Habits, Inbox & Scheduling implementation complete with:
 - **Today View** (/) - Landing page with daily execution focus
   - Habits section with option selection (single/multi-select)
   - Scheduled tasks for today
-  - Inbox triage (Add to Today, Schedule, Dismiss)
+  - Inbox triage with dialog prompts (Add to Today, Schedule, Dismiss)
   - Tasks added to today via TaskDayAssignment
-- **Habits Management** (/habits) - Create/edit/delete habits with options
+- **Habits Management** (/habits) - Create habits with options, toggle active/inactive
 - **Tasks View** (/tasks) - Enhanced with new filters and valence display
   - Filters: All (open), Open (unscheduled), Scheduled, Completed, Archived
   - Valence icons: Triangle (-1), Circle (0), Sparkles (+1)
@@ -127,7 +127,7 @@ v0.2 - Today, Habits, Inbox & Scheduling implementation complete with:
 - id, userId, content, status (untriaged|triaged), createdAt, triagedAt
 
 ### HabitDefinition (v0.2)
-- id, userId, name, selectionType (single|multi), isActive, sortOrder, createdAt
+- id, userId, domainId, name, selectionType (single|multi), minRequired (for multi), isActive, sortOrder, createdAt
 
 ### HabitOption (v0.2)
 - id, habitId, label, sortOrder, createdAt

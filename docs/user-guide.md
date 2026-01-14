@@ -10,9 +10,10 @@ A personal productivity app for managing tasks across life domains.
 Tasks organizes your to-dos into 9 life domains: Body, Space, Mind, Plan, Connect, Attack, Create, Learn, and Manage. Each domain groups related tasks together for focused productivity.
 
 ### First Steps
-1. Open the app - you'll see all 9 domains listed vertically
-2. Each domain shows a header with its name and task count
-3. Use the "+" button in the header to add your first task
+1. Open the app - you'll land on the **Today** page showing your daily focus
+2. Navigate to **Tasks** to see all 9 domains listed vertically
+3. Each domain shows a header with its name and task count
+4. Use the "+" button in the header to add your first task
 
 ---
 
@@ -24,7 +25,7 @@ Tasks organizes your to-dos into 9 life domains: Body, Space, Mind, Plan, Connec
 1. Click the "+" button in the top header bar
 2. Fill in the task title (required)
 3. Select which domain the task belongs to
-4. Optionally adjust priority, effort, and complexity (1-3 scale, all default to 1)
+4. Optionally adjust priority (1-3), effort (1-3 or ?), and valence (-1/0/+1)
 5. Optionally pick due date and scheduled date using the calendar picker
 6. Click "Add Task"
 
@@ -32,7 +33,7 @@ Tasks organizes your to-dos into 9 life domains: Body, Space, Mind, Plan, Connec
 1. Click the "+" icon next to any domain header
 2. Type your task title
 3. Click "Add details" to expand metadata options
-4. Set priority/effort/complexity and dates as needed
+4. Set priority/effort/valence and dates as needed
 5. Click "Add Task"
 
 ### 2.2 Editing Tasks
@@ -47,7 +48,7 @@ Tasks organizes your to-dos into 9 life domains: Body, Space, Mind, Plan, Connec
 #### Full Edit (Drawer)
 1. Click the larger pencil icon on the right side of any task row
 2. The edit drawer slides in from the right
-3. Modify title, domain, priority, effort, complexity, or dates
+3. Modify title, domain, priority, effort, valence, or dates
 4. Click "Save" to apply changes
 5. Click outside the drawer or press Escape to cancel
 
@@ -78,8 +79,9 @@ Tasks organizes your to-dos into 9 life domains: Body, Space, Mind, Plan, Connec
 
 ### 3.1 Filtering Tasks
 Use the filter buttons at the top to show:
-- **All** - Both open and completed tasks (default view)
-- **Open** - Active tasks you're working on
+- **All** - All open tasks (scheduled and unscheduled)
+- **Open** - Unscheduled open tasks only
+- **Scheduled** - Tasks with a scheduled date set
 - **Completed** - Tasks you've finished
 - **Archived** - Tasks you've hidden (preserves open/completed status)
 
@@ -89,8 +91,8 @@ Use the sort dropdown to order tasks within each domain:
 - **Due Date** - Tasks with due dates first, then by soonest date
 - **Scheduled** - Tasks with scheduled dates first, then by soonest date
 - **Priority** - Highest priority first (3 → 2 → 1)
-- **Effort** - Lowest effort first (1 → 2 → 3)
-- **Complexity** - Lowest complexity first (1 → 2 → 3)
+- **Effort** - Lowest effort first (1 → 2 → 3, then unknown)
+- **Valence** - Enjoyable first (+1 → 0 → -1)
 - **Created** - Newest tasks first
 
 ### 3.3 Drag-and-Drop Reordering
@@ -116,21 +118,23 @@ In "Manual" sort mode:
 - **2** - Medium priority
 - **3** - High priority, do soon
 
-### 4.2 Effort (1-3)
+### 4.2 Effort (1-3 or ?)
+- **?** - Unknown effort (not yet estimated)
 - **1** - Quick task, minimal effort
 - **2** - Moderate effort
 - **3** - Significant effort required
 
-### 4.3 Complexity (1-3)
-- **1** - Simple, straightforward
-- **2** - Some complexity
-- **3** - Complex, requires focus
+### 4.3 Valence (-1/0/+1)
+Indicates how you feel about doing the task:
+- **-1** (Triangle icon) - Avoidant, dreading it
+- **0** (Circle icon) - Neutral
+- **+1** (Sparkles icon) - Enjoyable, looking forward to it
 
 ### 4.4 Dates
 - **Due Date** - When the task must be completed by
 - **Scheduled Date** - When you plan to work on the task
 
-**Note:** All metadata fields default to 1 and are always set. Dates are optional.
+**Note:** Priority defaults to 1, effort defaults to unknown (?), valence defaults to 0. Dates are optional.
 
 ---
 
@@ -183,7 +187,65 @@ On the main tasks page:
 
 ---
 
-## 6. Theme
+## 6. Today View
+
+The Today page (/) is your daily command center, showing everything you need to focus on today.
+
+### 6.1 Habits Section
+Daily habits appear at the top. For each active habit:
+1. **Single-select habits**: Click one option to record your choice
+2. **Multi-select habits**: Click multiple options (minimum required shown)
+3. A checkmark appears when today's entry is recorded
+
+### 6.2 Scheduled Tasks
+Tasks with today's date as their scheduled date appear here. Click the checkbox to complete them.
+
+### 6.3 Inbox
+Quickly capture thoughts without interrupting your flow:
+1. Type your idea in the "Capture something..." field
+2. Press Enter or click the add button
+3. Items appear in the Inbox section for later triage
+
+### 6.4 Triaging Inbox Items
+Each inbox item has three actions:
+- **Add to Today** (check icon): Opens a dialog to select a domain, then creates a task and adds it to today
+- **Schedule** (calendar icon): Opens a dialog to select domain and date, creates a scheduled task
+- **Dismiss** (X icon): Archives the item without creating a task
+
+### 6.5 Added to Today
+Shows tasks you've added to today (via triage or the TaskDayAssignment).
+
+---
+
+## 7. Habits
+
+### Managing Habits
+Navigate to the Habits page (sparkles icon in header) to manage your daily habits.
+
+#### Creating a Habit
+1. Click "New Habit"
+2. Enter the habit name
+3. Select which domain it belongs to
+4. Choose selection type:
+   - **Single**: Pick one option each day
+   - **Multi**: Pick several options (set minimum required)
+5. Add options (at least one required)
+6. Click "Create Habit"
+
+#### Adding Options to Existing Habits
+1. Find the habit card
+2. Click "+ Add" next to existing options
+3. Type the option label and press Enter
+
+#### Removing Options
+Click the X on any option badge to remove it.
+
+#### Enabling/Disabling Habits
+Each habit has a toggle switch. Disabled habits won't appear on the Today page but remain in the management view and can be re-enabled anytime.
+
+---
+
+## 8. Theme
 
 ### Switching Themes
 1. Click the theme toggle button (sun/moon icon) in the header
@@ -205,10 +267,13 @@ On the main tasks page:
 
 ---
 
-## 8. Tips & Best Practices
+## 10. Tips & Best Practices
 
+- **Start with Today** - Use the Today page as your daily command center
+- **Capture to Inbox** - Quickly jot ideas to Inbox, triage them later
 - **Use domains to separate concerns** - Keep work tasks in "Attack", personal development in "Learn"
 - **Set priorities** - Focus on priority 3 tasks first
-- **Use effort/complexity** - When tired, pick low-effort tasks; when focused, tackle complex ones
+- **Use effort/valence** - When tired, pick low-effort tasks; when motivated, tackle avoidant (-1) ones
+- **Build habits** - Create daily habits to track consistent routines
 - **Archive liberally** - Archive completed tasks you no longer need to see; you can always restore them
 - **Drag to reorganize** - Use drag-and-drop to quickly prioritize your day's work

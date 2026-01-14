@@ -50,8 +50,8 @@ This document tracks the implementation status of v0.2 (Today, Habits, Inbox & S
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Create inbox item | Complete | Form on Today page |
-| Triage: Add to Today | Complete | Convert to Task + TaskDayAssignment |
-| Triage: Schedule | Complete | Convert to Task with scheduled_date |
+| Triage: Add to Today | Complete | Dialog for domain selection, then Task + TaskDayAssignment |
+| Triage: Schedule | Complete | Dialog for domain + date selection, then Task with scheduled_date |
 | Triage: Dismiss | Complete | Archives inbox item without task |
 | Archive inbox item | Complete | Via Dismiss button |
 
@@ -59,7 +59,7 @@ This document tracks the implementation status of v0.2 (Today, Habits, Inbox & S
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Habits management page (/habits) | Complete | Full CRUD with options |
+| Habits management page (/habits) | Complete | Create/edit with toggle on/off |
 | Create habit with options | Complete | Add multiple options |
 | Single-select habits | Complete | Radio-style selection |
 | Multi-select habits | Complete | Checkbox-style selection |
@@ -135,3 +135,5 @@ Required indexes implemented via direct SQL:
 |------|--------|
 | 2026-01-14 | Initial report created |
 | 2026-01-14 | v0.2 implementation complete (Phase 1-5, 7) |
+| 2026-01-14 | Bug fixes: Inbox triage dialogs, valence field, effort unknown, stale Today data |
+| 2026-01-14 | Habits page shows inactive habits; removed redundant delete button (toggle suffices) |
