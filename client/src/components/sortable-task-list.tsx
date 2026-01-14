@@ -81,11 +81,13 @@ export function SortableTaskItem({
     } as TaskDragData,
   });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
+  const style = isDragging
+    ? {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: 0.5,
+      }
+    : {};
 
   const handleCheckChange = () => {
     if (isCompleted) {
