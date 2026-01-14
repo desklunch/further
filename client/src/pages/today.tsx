@@ -82,7 +82,13 @@ export default function TodayPage() {
       domainId?: string;
       scheduledDate?: string;
     }) => {
-      return apiRequest("POST", `/api/inbox/${id}/triage`, { action, domainId, scheduledDate });
+      if (action === "add") {
+        return apiRequest("POST", `/api/inbox/${id}/triage/add-to-today`, { domainId, date: todayStr });
+      } else if (action === "schedule") {
+        return apiRequest("POST", `/api/inbox/${id}/triage/schedule`, { domainId, scheduledDate });
+      } else {
+        return apiRequest("POST", `/api/inbox/${id}/archive`, {});
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/today"] });
@@ -124,8 +130,7 @@ export default function TodayPage() {
 
   const saveHabitEntryMutation = useMutation({
     mutationFn: async ({ habitId, selectedOptionIds }: { habitId: string; selectedOptionIds: string[] }) => {
-      return apiRequest("POST", "/api/habits/entries", { 
-        habitId, 
+      return apiRequest("POST", `/api/habits/${habitId}/entries`, { 
         date: todayStr, 
         selectedOptionIds 
       });

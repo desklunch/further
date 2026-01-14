@@ -8,6 +8,24 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ## 2026-01-14
 
+### v0.2 Implementation Complete
+- **19:00 UTC** | Checkpoint `10e02b2c` | v0.2 Today, Habits, Inbox & Scheduling complete
+- **19:00 UTC** | Phase 1-5, 7 implemented; Phase 6 (undo) skipped as nice-to-have
+- **18:55 UTC** | Phase 5: Updated Tasks View with new filters, valence icons, effort unknown state
+- **18:50 UTC** | Phase 4: Built Habits management page (/habits) with CRUD
+- **18:45 UTC** | Phase 3: Built Today View page with habits, scheduled tasks, inbox triage
+- **18:30 UTC** | Phase 2b: API routes for Inbox, Habits, TaskDayAssignment, /api/today
+- **18:15 UTC** | Phase 2a: Storage layer CRUD for new entities
+- **18:00 UTC** | Phase 1b: Database migration via direct SQL (complexity→valence)
+- **17:45 UTC** | Phase 1a: Schema updates (valence, effort nullable, 5 new entities)
+
+### Key Architecture Decisions (v0.2)
+- InboxItem converts to Task on triage (Add/Schedule buttons)
+- Valence icons: Triangle (-1), Circle (0), Sparkles (+1)
+- Browser local time for "today" date calculations
+- Habits managed at /habits, Today shows selection UI only
+- Single /api/today endpoint for aggregated data
+
 ### Collapsed Domain Drop Fix
 - **17:15 UTC** | Checkpoint `8689c059` | Fixed drag-and-drop onto collapsed domains
 - **17:15 UTC** | Root cause: DomainHeader and SortableTaskList used same droppable ID (`domain-drop-${id}`)

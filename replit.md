@@ -35,7 +35,7 @@ This ensures documentation is never forgotten. Mark it "not applicable" if the c
 | PRD | Status | Spec | Report |
 |-----|--------|------|--------|
 | v0.1 - Domains & Tasks Core | Complete | `docs/prds/prd-v0.1-spec.md` | `docs/prds/prd-0.1-report.md` |
-| v0.2 - Today, Habits, Inbox & Scheduling | In Progress | `docs/prds/prd-v0.2.b-revised-spec.md` | `docs/prds/prd-0.2-report.md` |
+| v0.2 - Today, Habits, Inbox & Scheduling | Complete | `docs/prds/prd-v0.2.b-revised-spec.md` | `docs/prds/prd-0.2-report.md` |
 
 ### Implementation Report Directive
 **You MUST maintain an implementation report for each active PRD.** The report should:
@@ -51,19 +51,24 @@ This ensures documentation is never forgotten. Mark it "not applicable" if the c
 A personal productivity web app focused on managing tasks across life domains. Built with React, Express, and PostgreSQL database.
 
 ## Current State
-v0.1 - Domains & Tasks Core implementation complete with:
-- Domain management with 9 seed domains (Body, Space, Mind, Plan, Connect, Attack, Create, Learn, Manage)
-- Manage Domains page (/domains) with create, rename, reorder, enable/disable
-- Task CRUD with completion, archival, and restoration
-- Multiple sort modes (manual, due date, scheduled, priority, effort, complexity, created)
-- Filter modes: All (open+completed), Open, Completed, Archived
-- Dark/light theme toggle
-- Drag-and-drop task reordering (within and across domains)
-- Shadcn date pickers for due date and scheduled date
-- Collapsible domains with auto-expand during drag
-- Inline task title editing (double-click or edit icon)
-- Keyboard shortcut Cmd/Ctrl+N for new task
-- Domain enable/disable with task reassignment prompt
+v0.2 - Today, Habits, Inbox & Scheduling implementation complete with:
+- **Today View** (/) - Landing page with daily execution focus
+  - Habits section with option selection (single/multi-select)
+  - Scheduled tasks for today
+  - Inbox triage (Add to Today, Schedule, Dismiss)
+  - Tasks added to today via TaskDayAssignment
+- **Habits Management** (/habits) - Create/edit/delete habits with options
+- **Tasks View** (/tasks) - Enhanced with new filters and valence display
+  - Filters: All (open), Open (unscheduled), Scheduled, Completed, Archived
+  - Valence icons: Triangle (-1), Circle (0), Sparkles (+1)
+  - Effort unknown state: ? icon when null
+  - Sort by: manual, due date, scheduled, priority, effort, valence, created
+- **v0.1 Features** preserved:
+  - Domain management with 9 seed domains
+  - Task CRUD with completion, archival, restoration
+  - Drag-and-drop task reordering (within and across domains)
+  - Collapsible domains, inline task title editing
+  - Keyboard shortcut Cmd/Ctrl+N for new task
 
 ## Architecture
 
@@ -73,9 +78,12 @@ v0.1 - Domains & Tasks Core implementation complete with:
 - **State**: TanStack Query for server state
 - **Routing**: Wouter
 - **Drag-and-Drop**: dnd-kit
-- **Key Components**:
-  - `pages/tasks.tsx` - Main tasks page with domain grouping
+- **Key Pages**:
+  - `pages/today.tsx` - Today View with habits, scheduled tasks, inbox, added tasks
+  - `pages/tasks.tsx` - Tasks page with domain grouping
+  - `pages/habits.tsx` - Habits management page
   - `pages/manage-domains.tsx` - Domain management page
+- **Key Components**:
   - `hooks/use-task-drag-and-drop.ts` - DnD state management hook
   - `components/task-row-content.tsx` - Shared task row UI (inline editing)
   - `components/sortable-task-list.tsx` - Sortable task list with drop zones
@@ -90,21 +98,18 @@ v0.1 - Domains & Tasks Core implementation complete with:
 - **Database**: PostgreSQL with Drizzle ORM
 - **Storage**: DatabaseStorage class implementing IStorage interface
 - **API Endpoints**:
-  - `GET /api/domains` - List all domains
-  - `POST /api/domains` - Create domain
-  - `PATCH /api/domains/:id` - Update domain
-  - `POST /api/domains/reorder` - Reorder domains
-  - `GET /api/tasks?filter=&sort=` - List tasks with filters
-  - `POST /api/tasks` - Create task
-  - `PATCH /api/tasks/:id` - Update task
-  - `POST /api/tasks/:id/complete` - Complete task
-  - `POST /api/tasks/:id/reopen` - Reopen task
-  - `POST /api/tasks/:id/archive` - Archive task
-  - `POST /api/tasks/:id/restore` - Restore archived task
-  - `POST /api/domains/:domainId/tasks/reorder` - Reorder tasks within domain
+  - Domains: `GET/POST /api/domains`, `PATCH /api/domains/:id`, `POST /api/domains/reorder`
+  - Tasks: `GET/POST /api/tasks`, `PATCH /api/tasks/:id`, `POST /api/tasks/:id/complete|reopen|archive|restore`
+  - Reorder: `POST /api/domains/:domainId/tasks/reorder`
+  - **v0.2 New**:
+    - `GET /api/today` - Aggregated today data (habits, scheduled, inbox, assignments)
+    - `GET/POST /api/inbox`, `PATCH/DELETE /api/inbox/:id`, `POST /api/inbox/:id/triage`
+    - `GET/POST /api/habits`, `PATCH/DELETE /api/habits/:id`
+    - `POST /api/habits/:id/entry` - Record habit selection for today
+    - `GET/POST /api/task-day-assignments`, `DELETE /api/task-day-assignments/:id`
 
 ### Shared (shared/)
-- `schema.ts` - TypeScript types and Zod schemas for domains and tasks
+- `schema.ts` - TypeScript types and Zod schemas for all entities
 
 ## Data Model
 
@@ -113,10 +118,25 @@ v0.1 - Domains & Tasks Core implementation complete with:
 
 ### Task
 - id, userId, domainId, title, status (open|completed)
-- Required: priority (1-3), effortPoints (1-3), complexity (1-3) - all default to 1
-- Optional: scheduledDate, dueDate
+- Required: priority (1-3) default 1
+- Optional: effortPoints (1-3 or null), valence (-1/0/1), scheduledDate, dueDate
 - domainSortOrder, createdAt, updatedAt, completedAt, archivedAt
 - Archive is tracked via archivedAt timestamp (not status)
+
+### InboxItem (v0.2)
+- id, userId, content, status (untriaged|triaged), createdAt, triagedAt
+
+### HabitDefinition (v0.2)
+- id, userId, name, selectionType (single|multi), isActive, sortOrder, createdAt
+
+### HabitOption (v0.2)
+- id, habitId, label, sortOrder, createdAt
+
+### HabitDailyEntry (v0.2)
+- id, userId, habitId, date, selectedOptionIds[], createdAt
+
+### TaskDayAssignment (v0.2)
+- id, userId, taskId, date, createdAt
 
 ## Running the App
 ```bash
