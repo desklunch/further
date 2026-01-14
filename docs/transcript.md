@@ -8,6 +8,14 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ## 2026-01-14
 
+### Collapsed Domain Drop Fix
+- **17:15 UTC** | Checkpoint `8689c059` | Fixed drag-and-drop onto collapsed domains
+- **17:15 UTC** | Root cause: DomainHeader and SortableTaskList used same droppable ID (`domain-drop-${id}`)
+- **17:15 UTC** | Resolution: Changed header ID to `domain-header-drop-${id}` with type `domain-header`
+- **17:15 UTC** | Updated collision detection and event handlers to recognize new type
+- **17:10 UTC** | Domains now stay collapsed during drag (removed auto-expand behavior)
+- **17:10 UTC** | Collapsed domain headers show visual highlight when targeted
+
 ### v0.1 PRD Completion & Enhancements
 - **17:00 UTC** | Created prd-0.1-report.md with full implementation status
 - **16:55 UTC** | Updated user-guide.md with new features documentation

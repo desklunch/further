@@ -21,6 +21,13 @@ Principles established during project development. Review before starting any ta
 
 ### Drag-and-Drop (dnd-kit)
 
+#### Critical: Unique Droppable IDs
+- **Every droppable must have a unique ID** - dnd-kit only registers the first droppable with a given ID
+- When multiple components can register droppables for the same logical entity (e.g., a collapsed header vs expanded list), use distinct ID prefixes:
+  - `domain-header-drop-${id}` for collapsed domain headers
+  - `domain-drop-${id}` for expanded domain lists
+- **Always apply refs unconditionally** - use the `disabled` prop to control active state, not conditional ref application
+
 #### Architecture
 - **Page-level DndContext**: Single DndContext at page level wrapping all containers
 - **Multiple SortableContexts**: Each container has its own SortableContext with its items
