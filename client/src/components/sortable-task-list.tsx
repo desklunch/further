@@ -28,11 +28,32 @@ interface SortableTaskListProps {
   onEdit: (task: Task) => void;
   isBeingTargeted?: boolean;
   dropTargetIndex?: number | null;
+  isDragActive?: boolean;
 }
 
 function DropIndicator() {
   return (
     <div className="h-1 bg-primary mx-4 rounded-full" />
+  );
+}
+
+function EndDropZone({ domainId, taskCount }: { domainId: string; taskCount: number }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `end-${domainId}`,
+    data: {
+      type: "end-zone",
+      domainId,
+      index: taskCount,
+    },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`h-12 mx-4 rounded border-2 border-dashed transition-colors ${
+        isOver ? "border-primary bg-primary/10" : "border-muted-foreground/30"
+      }`}
+    />
   );
 }
 
@@ -202,6 +223,7 @@ export function SortableTaskList({
   onEdit,
   isBeingTargeted = false,
   dropTargetIndex = null,
+  isDragActive = false,
 }: SortableTaskListProps) {
   const taskIds = tasks.map((t) => t.id);
 
@@ -246,6 +268,7 @@ export function SortableTaskList({
               </div>
             ))}
             {dropTargetIndex !== null && dropTargetIndex >= tasks.length && <DropIndicator />}
+            {isDragActive && <EndDropZone domainId={domainId} taskCount={tasks.length} />}
           </>
         )}
       </SortableContext>

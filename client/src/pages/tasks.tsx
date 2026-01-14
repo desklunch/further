@@ -264,6 +264,10 @@ export default function TasksPage() {
       targetDomainId = domainId;
       const domainTasks = tasksByDomain[domainId] || [];
       insertIndex = domainTasks.length;
+    } else if (over.data.current?.type === "end-zone") {
+      const domainId = over.data.current.domainId as string;
+      targetDomainId = domainId;
+      insertIndex = over.data.current.index as number;
     } else if (over.data.current?.type === "task") {
       const taskData = over.data.current as TaskDragData;
       const domainId = taskData.domainId;
@@ -313,9 +317,13 @@ export default function TasksPage() {
 
     let targetDomainId: string | null = null;
     let targetTaskId: string | null = null;
+    let endZoneIndex: number | null = null;
 
     if (over.data.current?.type === "domain") {
       targetDomainId = over.data.current.domainId;
+    } else if (over.data.current?.type === "end-zone") {
+      targetDomainId = over.data.current.domainId as string;
+      endZoneIndex = over.data.current.index as number;
     } else if (over.data.current?.type === "task") {
       targetDomainId = (over.data.current as TaskDragData).domainId;
       targetTaskId = over.id as string;
@@ -328,9 +336,14 @@ export default function TasksPage() {
     if (sourceDomainId === targetDomainId) {
       const domainTasks = tasksByDomain[sourceDomainId] || [];
       const oldIndex = domainTasks.findIndex((t) => t.id === draggedTask.id);
-      const newIndex = targetTaskId
-        ? domainTasks.findIndex((t) => t.id === targetTaskId)
-        : domainTasks.length - 1;
+      let newIndex: number;
+      if (endZoneIndex !== null) {
+        newIndex = domainTasks.length - 1;
+      } else if (targetTaskId) {
+        newIndex = domainTasks.findIndex((t) => t.id === targetTaskId);
+      } else {
+        newIndex = domainTasks.length - 1;
+      }
 
       if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
         const reordered = arrayMove(domainTasks, oldIndex, newIndex);
@@ -352,7 +365,9 @@ export default function TasksPage() {
       const movedTask = { ...draggedTask, domainId: targetDomainId };
 
       let insertIndex = targetTasks.length;
-      if (targetTaskId) {
+      if (endZoneIndex !== null) {
+        insertIndex = targetTasks.length;
+      } else if (targetTaskId) {
         const targetIdx = targetTasks.findIndex((t) => t.id === targetTaskId);
         if (targetIdx !== -1) {
           insertIndex = targetIdx;
@@ -459,6 +474,7 @@ export default function TasksPage() {
                       dropTargetIndex={
                         dropTarget?.domainId === domain.id ? dropTarget.index : null
                       }
+                      isDragActive={activeTask !== null}
                     />
                   </div>
                 );
