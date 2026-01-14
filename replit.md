@@ -36,6 +36,7 @@ This ensures documentation is never forgotten. Mark it "not applicable" if the c
 |-----|--------|------|--------|
 | v0.1 - Domains & Tasks Core | Complete | `docs/prds/prd-v0.1-spec.md` | `docs/prds/prd-0.1-report.md` |
 | v0.2 - Today, Habits, Inbox & Scheduling | Complete | `docs/prds/prd-v0.2.b-revised-spec.md` | `docs/prds/prd-0.2-report.md` |
+| v0.2.1 - Stability & Correctness Fixes | Complete | `docs/prds/prd-0.2.1-spec.md` | `docs/prds/prd-0.2.1-report.md` |
 
 ### Implementation Report Directive
 **You MUST maintain an implementation report for each active PRD.** The report should:

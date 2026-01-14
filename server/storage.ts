@@ -85,6 +85,7 @@ export interface IStorage {
   reorderHabitDefinitions(userId: string, orderedIds: string[]): Promise<void>;
   
   getHabitOptions(habitId: string): Promise<HabitOption[]>;
+  getHabitOptionsByHabitIds(habitIds: string[]): Promise<HabitOption[]>;
   createHabitOption(option: InsertHabitOption): Promise<HabitOption>;
   updateHabitOption(id: string, updates: Partial<InsertHabitOption>): Promise<HabitOption | undefined>;
   deleteHabitOption(id: string): Promise<void>;
@@ -363,7 +364,12 @@ export class DatabaseStorage implements IStorage {
     const domainTasks = await db
       .select()
       .from(tasks)
-      .where(and(eq(tasks.domainId, task.domainId), eq(tasks.status, "open")));
+      .where(and(
+        eq(tasks.userId, task.userId),
+        eq(tasks.domainId, task.domainId),
+        eq(tasks.status, "open"),
+        isNull(tasks.archivedAt)
+      ));
     const maxOrder = domainTasks.reduce((max, t) => Math.max(max, t.domainSortOrder), -1);
 
     const id = randomUUID();
@@ -401,7 +407,12 @@ export class DatabaseStorage implements IStorage {
       const domainTasks = await db
         .select()
         .from(tasks)
-        .where(and(eq(tasks.domainId, updates.domainId), eq(tasks.status, "open")));
+        .where(and(
+          eq(tasks.userId, existingTask.userId),
+          eq(tasks.domainId, updates.domainId),
+          eq(tasks.status, "open"),
+          isNull(tasks.archivedAt)
+        ));
       const maxOrder = domainTasks.reduce((max, t) => Math.max(max, t.domainSortOrder), -1);
       domainSortOrder = maxOrder + 1;
     }
@@ -734,6 +745,15 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(habitOptions.sortOrder));
   }
 
+  async getHabitOptionsByHabitIds(habitIds: string[]): Promise<HabitOption[]> {
+    if (habitIds.length === 0) return [];
+    return db
+      .select()
+      .from(habitOptions)
+      .where(sql`${habitOptions.habitId} IN (${sql.join(habitIds.map(id => sql`${id}`), sql`, `)})`)
+      .orderBy(asc(habitOptions.sortOrder));
+  }
+
   async createHabitOption(option: InsertHabitOption): Promise<HabitOption> {
     const existingOptions = await this.getHabitOptions(option.habitId);
     const maxOrder = existingOptions.reduce((max, o) => Math.max(max, o.sortOrder), -1);
@@ -828,22 +848,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTaskDayAssignment(assignment: InsertTaskDayAssignment): Promise<TaskDayAssignment> {
-    const existing = await this.getTaskDayAssignment(assignment.taskId, assignment.date);
-    if (existing) return existing;
-
     const task = await this.getTask(assignment.taskId);
     const id = randomUUID();
-    const [newAssignment] = await db
+    const userId = task?.userId ?? assignment.userId;
+    
+    const result = await db
       .insert(taskDayAssignments)
       .values({
         id,
-        userId: task?.userId ?? assignment.userId,
+        userId,
         taskId: assignment.taskId,
         date: assignment.date,
         createdAt: new Date(),
       })
+      .onConflictDoNothing({
+        target: [taskDayAssignments.userId, taskDayAssignments.taskId, taskDayAssignments.date],
+      })
       .returning();
-    return newAssignment;
+    
+    if (result.length > 0) {
+      return result[0];
+    }
+    
+    const existing = await this.getTaskDayAssignment(assignment.taskId, assignment.date);
+    return existing!;
   }
 
   async deleteTaskDayAssignment(taskId: string, date: string): Promise<void> {

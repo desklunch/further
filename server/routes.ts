@@ -218,7 +218,10 @@ export async function registerRoutes(
 
   app.get("/api/today", async (req, res) => {
     try {
-      const dateParam = req.query.date as string || new Date().toISOString().split("T")[0];
+      const dateParam = req.query.date as string;
+      if (!dateParam) {
+        return res.status(400).json({ error: "date query parameter is required" });
+      }
       
       const [habits, scheduledTasks, inboxItems, assignedTasks] = await Promise.all([
         storage.getHabitDefinitions(DEFAULT_USER_ID),
@@ -227,12 +230,20 @@ export async function registerRoutes(
         storage.getTasksAssignedToDate(DEFAULT_USER_ID, dateParam),
       ]);
 
-      const habitOptionsMap: Record<string, Awaited<ReturnType<typeof storage.getHabitOptions>>> = {};
-      for (const habit of habits) {
-        habitOptionsMap[habit.id] = await storage.getHabitOptions(habit.id);
+      const habitIds = habits.map(h => h.id);
+      const [allOptions, dailyEntries] = await Promise.all([
+        storage.getHabitOptionsByHabitIds(habitIds),
+        storage.getHabitDailyEntriesForDate(DEFAULT_USER_ID, dateParam),
+      ]);
+
+      const habitOptionsMap: Record<string, typeof allOptions> = {};
+      for (const option of allOptions) {
+        if (!habitOptionsMap[option.habitId]) {
+          habitOptionsMap[option.habitId] = [];
+        }
+        habitOptionsMap[option.habitId].push(option);
       }
 
-      const dailyEntries = await storage.getHabitDailyEntriesForDate(DEFAULT_USER_ID, dateParam);
       const entriesMap: Record<string, typeof dailyEntries[0]> = {};
       for (const entry of dailyEntries) {
         entriesMap[entry.habitId] = entry;
@@ -291,6 +302,9 @@ export async function registerRoutes(
       if (!domainId) {
         return res.status(400).json({ error: "domainId is required" });
       }
+      if (!date) {
+        return res.status(400).json({ error: "date is required" });
+      }
 
       const inboxItem = await storage.getInboxItem(id);
       if (!inboxItem || inboxItem.status !== "untriaged") {
@@ -308,11 +322,10 @@ export async function registerRoutes(
         dueDate: null,
       });
 
-      const today = date || new Date().toISOString().split("T")[0];
       await storage.createTaskDayAssignment({
         userId: DEFAULT_USER_ID,
         taskId: task.id,
-        date: today,
+        date,
       });
 
       await storage.triageInboxItem(id);
@@ -520,7 +533,10 @@ export async function registerRoutes(
 
   app.get("/api/task-day-assignments", async (req, res) => {
     try {
-      const dateParam = req.query.date as string || new Date().toISOString().split("T")[0];
+      const dateParam = req.query.date as string;
+      if (!dateParam) {
+        return res.status(400).json({ error: "date query parameter is required" });
+      }
       const assignments = await storage.getTaskDayAssignmentsForDate(DEFAULT_USER_ID, dateParam);
       res.json(assignments);
     } catch (error) {
@@ -559,16 +575,19 @@ export async function registerRoutes(
       const { id } = req.params;
       const { date } = req.body;
       
+      if (!date) {
+        return res.status(400).json({ error: "date is required" });
+      }
+      
       const task = await storage.getTask(id);
       if (!task) {
         return res.status(404).json({ error: "Task not found" });
       }
 
-      const today = date || new Date().toISOString().split("T")[0];
       const assignment = await storage.createTaskDayAssignment({
         userId: DEFAULT_USER_ID,
         taskId: id,
-        date: today,
+        date,
       });
 
       res.json(assignment);
@@ -580,7 +599,11 @@ export async function registerRoutes(
   app.delete("/api/tasks/:id/remove-from-today", async (req, res) => {
     try {
       const { id } = req.params;
-      const dateParam = req.query.date as string || new Date().toISOString().split("T")[0];
+      const dateParam = req.query.date as string;
+      
+      if (!dateParam) {
+        return res.status(400).json({ error: "date query parameter is required" });
+      }
       
       await storage.deleteTaskDayAssignment(id, dateParam);
       res.json({ success: true });

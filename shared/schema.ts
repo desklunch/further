@@ -1,4 +1,4 @@
-import { pgTable, text, varchar, integer, boolean, timestamp, date, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, date, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -218,6 +218,7 @@ export const taskDayAssignments = pgTable("task_day_assignments", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("task_day_user_date_idx").on(table.userId, table.date),
+  uniqueIndex("task_day_unique_idx").on(table.userId, table.taskId, table.date),
 ]);
 
 export const insertTaskDayAssignmentSchema = createInsertSchema(taskDayAssignments).omit({
