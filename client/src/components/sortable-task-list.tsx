@@ -26,6 +26,10 @@ interface SortableTaskListProps {
   onReopen: (taskId: string) => void;
   onArchive: (taskId: string) => void;
   onEdit: (task: Task) => void;
+  activeTask?: Task | null;
+  activeDomainId?: string | null;
+  hoverDomainId?: string | null;
+  hoverTaskId?: string | null;
 }
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -194,8 +198,41 @@ export function SortableTaskList({
   onReopen,
   onArchive,
   onEdit,
+  activeTask,
+  activeDomainId,
+  hoverDomainId,
+  hoverTaskId,
 }: SortableTaskListProps) {
-  const taskIds = tasks.map((t) => t.id);
+  const isSourceDomain = activeTask && activeDomainId === domainId;
+  const isCrossDomainTarget =
+    activeTask &&
+    activeDomainId &&
+    activeDomainId !== domainId &&
+    hoverDomainId === domainId;
+
+  let displayTasks = tasks;
+
+  if (isSourceDomain) {
+    displayTasks = tasks.filter((t) => t.id !== activeTask.id);
+  } else if (isCrossDomainTarget) {
+    const taskWithDomain = { ...activeTask, domainId };
+    if (hoverTaskId) {
+      const hoverIdx = tasks.findIndex((t) => t.id === hoverTaskId);
+      if (hoverIdx !== -1) {
+        displayTasks = [
+          ...tasks.slice(0, hoverIdx),
+          taskWithDomain,
+          ...tasks.slice(hoverIdx),
+        ];
+      } else {
+        displayTasks = [...tasks, taskWithDomain];
+      }
+    } else {
+      displayTasks = [...tasks, taskWithDomain];
+    }
+  }
+
+  const taskIds = displayTasks.map((t) => t.id);
 
   const { setNodeRef, isOver } = useDroppable({
     id: `domain-drop-${domainId}`,
@@ -212,12 +249,12 @@ export function SortableTaskList({
       data-testid={`droppable-domain-${domainId}`}
     >
       <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-        {tasks.length === 0 ? (
+        {displayTasks.length === 0 ? (
           <div className="px-4 py-6 text-center text-sm text-muted-foreground">
             No tasks
           </div>
         ) : (
-          tasks.map((task) => (
+          displayTasks.map((task) => (
             <SortableTaskItem
               key={task.id}
               task={task}
