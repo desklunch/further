@@ -9,6 +9,7 @@ Reverse chronological history of significant changes and decisions. Each entry i
 ## 2026-01-14
 
 ### v0.2 Bug Fixes
+- **20:15 UTC** | Habits page: Now displays inactive habits with toggle to re-enable
 - **20:00 UTC** | Checkpoint `093c7157` | Fixed v0.2 implementation issues per PRD review
 - **20:00 UTC** | Inbox triage: Added dialog prompts for domain selection and scheduled date
 - **19:55 UTC** | Task forms: Replaced "Complexity" with "Valence" (-1/0/+1) field

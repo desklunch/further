@@ -77,7 +77,7 @@ export interface IStorage {
   triageInboxItem(id: string): Promise<InboxItem | undefined>;
   archiveInboxItem(id: string): Promise<InboxItem | undefined>;
   
-  getHabitDefinitions(userId: string): Promise<HabitDefinition[]>;
+  getHabitDefinitions(userId: string, includeInactive?: boolean): Promise<HabitDefinition[]>;
   getHabitDefinition(id: string): Promise<HabitDefinition | undefined>;
   createHabitDefinition(habit: InsertHabitDefinition): Promise<HabitDefinition>;
   updateHabitDefinition(id: string, updates: Partial<InsertHabitDefinition>): Promise<HabitDefinition | undefined>;
@@ -662,11 +662,15 @@ export class DatabaseStorage implements IStorage {
     return archived;
   }
 
-  async getHabitDefinitions(userId: string): Promise<HabitDefinition[]> {
+  async getHabitDefinitions(userId: string, includeInactive: boolean = false): Promise<HabitDefinition[]> {
+    const conditions = [eq(habitDefinitions.userId, userId)];
+    if (!includeInactive) {
+      conditions.push(eq(habitDefinitions.isActive, true));
+    }
     return db
       .select()
       .from(habitDefinitions)
-      .where(and(eq(habitDefinitions.userId, userId), eq(habitDefinitions.isActive, true)))
+      .where(and(...conditions))
       .orderBy(asc(habitDefinitions.sortOrder));
   }
 

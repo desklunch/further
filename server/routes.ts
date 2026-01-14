@@ -373,7 +373,8 @@ export async function registerRoutes(
 
   app.get("/api/habits", async (req, res) => {
     try {
-      const habits = await storage.getHabitDefinitions(DEFAULT_USER_ID);
+      // Include inactive habits for the management page
+      const habits = await storage.getHabitDefinitions(DEFAULT_USER_ID, true);
       const habitsWithOptions = await Promise.all(
         habits.map(async (habit) => ({
           ...habit,
