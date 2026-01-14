@@ -19,15 +19,84 @@ Principles established during project development. Review before starting any ta
 
 ## Technical Principles
 
-### Drag-and-Drop
-- **Sort by domainSortOrder**: When grouping tasks by domain, always sort each domain's tasks by `domainSortOrder` to reflect manual ordering
-- **Optimistic updates pattern**: 
-  1. Clone task array and update relevant fields
-  2. Call `setOptimisticTasks(newTasks)` immediately
-  3. Add task ID to pending set for visual feedback
-  4. Make API call
-  5. On success: clear optimistic state, invalidate queries
-  6. On error: clear optimistic state, show toast
+### Drag-and-Drop (dnd-kit)
+
+#### Architecture
+- **Page-level DndContext**: Single DndContext at page level wrapping all domains
+- **Multiple SortableContexts**: Each domain has its own SortableContext with its tasks
+- **Domain droppables**: Each domain uses `useDroppable` for cross-domain drops
+- **DragOverlay**: Shows ghost of dragged item following cursor
+
+#### Collision Detection
+- **Custom detector**: Prioritizes task items over domain containers to avoid "dead zones"
+- **Implementation**: Use `pointerWithin` first, filter out `domain-drop-*` IDs when task collisions exist, fall back to `closestCenter`
+```typescript
+const customCollisionDetection: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+  if (pointerCollisions.length === 0) return closestCenter(args);
+  const taskCollisions = pointerCollisions.filter(
+    (c) => !String(c.id).startsWith("domain-drop-")
+  );
+  return taskCollisions.length > 0 ? taskCollisions : pointerCollisions;
+};
+```
+
+#### Visual Feedback During Drag
+- **Ghosted source item**: Dragged item stays visible at 50% opacity in original position (no transform applied)
+- **Drop indicator line**: Blue horizontal line shows insertion position
+- **No item shifting**: Other items don't animate/shift during drag - only the drop indicator moves
+- **End-of-list spacer**: Invisible droppable zone at bottom of target domain for easy end drops
+
+#### Drag State Management
+```typescript
+const [activeTask, setActiveTask] = useState<Task | null>(null);
+const [activeDomainId, setActiveDomainId] = useState<string | null>(null);
+const [hoverDomainId, setHoverDomainId] = useState<string | null>(null);
+const [dropTarget, setDropTarget] = useState<{ domainId: string; index: number } | null>(null);
+```
+
+#### Key Handler Patterns
+- **onDragStart**: Set activeTask and activeDomainId
+- **onDragOver**: Compute hoverDomainId and dropTarget (domainId + insertion index)
+- **onDragEnd**: Clear all drag state, perform reorder/move mutation
+
+#### SortableTaskItem Styling
+- **No transform during drag**: Only apply opacity, not CSS transform (prevents item shifting)
+```typescript
+const style = { opacity: isDragging ? 0.5 : 1 };
+```
+
+#### Drop Target Types
+- `type: "task"` - Hovering over a task item
+- `type: "domain"` - Hovering over empty domain area
+- `type: "end-zone"` - Hovering over end-of-list spacer
+
+#### Domain Highlighting
+- Pass `isBeingTargeted` prop to SortableTaskList: `activeTask !== null && hoverDomainId === domain.id`
+- When true, domain container shows `bg-accent/30` background
+- EndDropZone spacer only renders when `isDragActive && isBeingTargeted`
+
+#### Optimistic Updates
+1. Update `localTasksByDomain` state immediately with reordered/moved tasks
+2. Call mutation (reorder or move)
+3. On success: invalidate queries to sync with server
+4. On error: show toast (localTasksByDomain clears on next server fetch)
+
+#### Within-Domain Reorder
+Use `arrayMove` from `@dnd-kit/sortable` to reorder tasks:
+```typescript
+import { arrayMove } from "@dnd-kit/sortable";
+const reordered = arrayMove(domainTasks, oldIndex, newIndex);
+setLocalTasksByDomain((prev) => ({ ...prev, [domainId]: reordered }));
+```
+
+#### Sort by domainSortOrder
+When grouping tasks by domain, always sort each domain's tasks by `domainSortOrder`:
+```typescript
+Object.keys(grouped).forEach((domainId) => {
+  grouped[domainId].sort((a, b) => a.domainSortOrder - b.domainSortOrder);
+});
+```
 
 ### State Management
 - **Optimistic fallback pattern**: `const tasks = optimisticTasks ?? serverTasks` - use optimistic state when available, fall back to server state

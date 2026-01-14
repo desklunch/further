@@ -8,6 +8,21 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ## 2026-01-14
 
+### DnD Guidelines Documentation
+- **16:30 UTC** | Checkpoint `324997b4` | Updated guidelines.md with comprehensive DnD implementation spec
+- **16:30 UTC** | Documented: architecture, collision detection, visual feedback, state management, handler patterns
+
+### DnD Visual Refinements
+- **16:00 UTC** | Checkpoint `324997b4` | Made end-of-list spacer invisible (no border/highlight)
+- **16:00 UTC** | Checkpoint `1fe1b8c9` | Spacer only appears in currently targeted domain
+- **16:00 UTC** | Checkpoint `252721ea` | Added EndDropZone component for easy end-of-list drops
+- **15:45 UTC** | Checkpoint `f4b3014e` | Ghosted task now stays visible in original position for all drags
+- **15:40 UTC** | Checkpoint `9a01be7a` | Removed item shifting during drag (no transform applied to non-dragged items)
+- **15:35 UTC** | Checkpoint `f02e73c7` | Unified drop indicator for both within-domain and cross-domain drags
+- **15:30 UTC** | Checkpoint `83e0fb19` | Added visual drop indicator (blue line) for cross-domain drags
+- **15:20 UTC** | Checkpoint `b2ed5595` | Added blue ring highlight on collision-detected task
+- **15:15 UTC** | Checkpoint `be1b9c1e` | Custom collision detection to fix "dead zone" at third item position
+
 ### Cross-Domain Drag Highlight Improvement
 - **15:09 UTC** | Checkpoint `bb70cd08` | Improved cross-domain drag highlight via isBeingTargeted prop
 - **15:09 UTC** | Added onDragOver handler to track hoverDomainId during drag
