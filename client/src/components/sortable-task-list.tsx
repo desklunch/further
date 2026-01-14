@@ -27,6 +27,13 @@ interface SortableTaskListProps {
   onArchive: (taskId: string) => void;
   onEdit: (task: Task) => void;
   isBeingTargeted?: boolean;
+  dropTargetIndex?: number | null;
+}
+
+function DropIndicator() {
+  return (
+    <div className="h-1 bg-primary mx-4 rounded-full" />
+  );
 }
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -199,6 +206,7 @@ export function SortableTaskList({
   onArchive,
   onEdit,
   isBeingTargeted = false,
+  dropTargetIndex = null,
 }: SortableTaskListProps) {
   const taskIds = tasks.map((t) => t.id);
 
@@ -220,22 +228,30 @@ export function SortableTaskList({
     >
       <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
         {tasks.length === 0 ? (
-          <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-            No tasks
-          </div>
+          <>
+            {dropTargetIndex !== null && <DropIndicator />}
+            <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+              No tasks
+            </div>
+          </>
         ) : (
-          tasks.map((task) => (
-            <SortableTaskItem
-              key={task.id}
-              task={task}
-              domainId={domainId}
-              filterMode={filterMode}
-              onComplete={onComplete}
-              onReopen={onReopen}
-              onArchive={onArchive}
-              onEdit={onEdit}
-            />
-          ))
+          <>
+            {tasks.map((task, index) => (
+              <div key={task.id}>
+                {dropTargetIndex === index && <DropIndicator />}
+                <SortableTaskItem
+                  task={task}
+                  domainId={domainId}
+                  filterMode={filterMode}
+                  onComplete={onComplete}
+                  onReopen={onReopen}
+                  onArchive={onArchive}
+                  onEdit={onEdit}
+                />
+              </div>
+            ))}
+            {dropTargetIndex !== null && dropTargetIndex >= tasks.length && <DropIndicator />}
+          </>
         )}
       </SortableContext>
     </div>

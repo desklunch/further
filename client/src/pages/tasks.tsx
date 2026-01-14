@@ -37,6 +37,7 @@ export default function TasksPage() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [activeDomainId, setActiveDomainId] = useState<string | null>(null);
   const [hoverDomainId, setHoverDomainId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ domainId: string; index: number } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -248,25 +249,47 @@ export default function TasksPage() {
   }
 
   function handleDragOver(event: DragOverEvent) {
-    const { over } = event;
+    const { over, active } = event;
     if (!over) {
       setHoverDomainId(null);
+      setDropTarget(null);
       return;
     }
 
     let targetDomainId: string | null = null;
+    let insertIndex: number | null = null;
+
     if (over.data.current?.type === "domain") {
-      targetDomainId = over.data.current.domainId;
+      const domainId = over.data.current.domainId as string;
+      targetDomainId = domainId;
+      const domainTasks = tasksByDomain[domainId] || [];
+      insertIndex = domainTasks.length;
     } else if (over.data.current?.type === "task") {
-      targetDomainId = (over.data.current as TaskDragData).domainId;
+      const taskData = over.data.current as TaskDragData;
+      const domainId = taskData.domainId;
+      targetDomainId = domainId;
+      const domainTasks = tasksByDomain[domainId] || [];
+      const overIndex = domainTasks.findIndex((t) => t.id === over.id);
+      insertIndex = overIndex >= 0 ? overIndex : domainTasks.length;
     }
+
     setHoverDomainId(targetDomainId);
+
+    const activeData = active.data.current as TaskDragData | undefined;
+    const sourceDomainId = activeData?.domainId;
+
+    if (targetDomainId && sourceDomainId && targetDomainId !== sourceDomainId && insertIndex !== null) {
+      setDropTarget({ domainId: targetDomainId, index: insertIndex });
+    } else {
+      setDropTarget(null);
+    }
   }
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveTask(null);
     setActiveDomainId(null);
     setHoverDomainId(null);
+    setDropTarget(null);
     const { active, over } = event;
 
     if (!over) return;
@@ -421,6 +444,9 @@ export default function TasksPage() {
                         activeDomainId !== null &&
                         activeDomainId !== domain.id &&
                         hoverDomainId === domain.id
+                      }
+                      dropTargetIndex={
+                        dropTarget?.domainId === domain.id ? dropTarget.index : null
                       }
                     />
                   </div>
