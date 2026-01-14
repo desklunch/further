@@ -78,7 +78,7 @@ export function DomainHeader({
 
   return (
     <div 
-      ref={isCollapsed ? setNodeRef : undefined}
+      ref={setNodeRef}
       className={cn(
         "sticky top-[57px] z-30 flex items-center justify-between gap-4 border-b bg-muted/50 px-4 py-4 backdrop-blur-sm transition-colors",
         isDropTarget && "bg-primary/10 border-primary ring-2 ring-primary/30"
