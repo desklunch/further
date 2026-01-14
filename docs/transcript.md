@@ -16,8 +16,16 @@ Reverse chronological history of significant changes and decisions. Each entry i
 - **18:18 UTC** | Updated schema defaults: priority/effort/complexity now default to 1 (was 2)
 - **18:17 UTC** | User requested: persistent database storage for tasks and domains
 
+### DnD Refactor - Standard dnd-kit Patterns
+- **20:15 UTC** | Checkpoint `pending` | Refactored DnD to use standard dnd-kit patterns without ID prefix parsing
+- **20:15 UTC** | Changed: Use active.data.current and over.data.current for type detection
+- **20:15 UTC** | Added typed interfaces: TaskDragData, DomainDragData, DomainDropData
+- **20:15 UTC** | Updated droppable-domain.tsx: Use "domain-drop" type to distinguish from sortable domains
+- **20:15 UTC** | Simplified handleDragStart/handleDragOver/handleDragEnd to rely on data properties
+- **20:10 UTC** | User requested: DnD refactor to diagnose if issues are framework or implementation related
+
 ### Mobile Responsive Task Layout + DnD Filter Fix
-- **19:30 UTC** | Checkpoint `pending` | Added responsive layout: badges stack below task name on mobile, inline on desktop
+- **19:30 UTC** | Checkpoint `eccab70e` | Added responsive layout: badges stack below task name on mobile, inline on desktop
 - **19:30 UTC** | Updated: task-row.tsx, sortable-task-row.tsx with flex-col/flex-row responsive classes
 - **19:30 UTC** | Extended DnD to work in both "All" and "Open" filter modes (was only "Open")
 - **19:30 UTC** | Fixed pre-existing LSP errors in task-row.tsx: isArchived now checks archivedAt

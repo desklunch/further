@@ -9,9 +9,9 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragStartEvent,
-  DragEndEvent,
-  DragOverEvent,
+  type DragStartEvent,
+  type DragEndEvent,
+  type DragOverEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -37,7 +37,23 @@ interface ReorderPayload {
   newIndex: number;
 }
 
-type DragItemType = "task" | "domain";
+interface TaskDragData {
+  type: "task";
+  task: Task;
+  domainId: string;
+}
+
+interface DomainDragData {
+  type: "domain";
+  domain: Domain;
+}
+
+interface DomainDropData {
+  type: "domain-drop";
+  domainId: string;
+}
+
+type DragData = TaskDragData | DomainDragData | DomainDropData;
 
 interface SortableDomainSectionProps {
   domain: Domain;
@@ -115,7 +131,7 @@ export default function TasksPage() {
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(new Set());
   const [optimisticTasks, setOptimisticTasks] = useState<Task[] | null>(null);
   const [optimisticDomains, setOptimisticDomains] = useState<Domain[] | null>(null);
-  const [dragItemType, setDragItemType] = useState<DragItemType | null>(null);
+  const [dragItemType, setDragItemType] = useState<"task" | "domain" | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -325,23 +341,18 @@ export default function TasksPage() {
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const { active } = event;
-    const activeId = active.id.toString();
-
-    if (activeId.startsWith("domain-sort-")) {
-      const domainId = activeId.replace("domain-sort-", "");
-      const domain = activeDomainsList.find((d) => d.id === domainId);
-      if (domain) {
-        setActiveDomain(domain);
-        setDragItemType("domain");
-      }
-    } else {
-      const task = tasks.find((t) => t.id === activeId);
-      if (task) {
-        setActiveTask(task);
-        setDragItemType("task");
-      }
+    const data = active.data.current as DragData | undefined;
+    
+    if (!data) return;
+    
+    if (data.type === "domain") {
+      setActiveDomain(data.domain);
+      setDragItemType("domain");
+    } else if (data.type === "task") {
+      setActiveTask(data.task);
+      setDragItemType("task");
     }
-  }, [tasks, activeDomainsList]);
+  }, []);
 
   const handleDragOver = useCallback((event: DragOverEvent) => {
     if (dragItemType !== "task") return;
@@ -352,16 +363,20 @@ export default function TasksPage() {
       return;
     }
 
-    const overId = over.id.toString();
-    if (overId.startsWith("domain-")) {
-      setOverDomainId(overId.replace("domain-", ""));
-    } else if (!overId.startsWith("domain-sort-")) {
-      const overTask = tasks.find((t) => t.id === overId);
-      if (overTask) {
-        setOverDomainId(overTask.domainId);
-      }
+    const overData = over.data.current as DragData | undefined;
+    if (!overData) {
+      setOverDomainId(null);
+      return;
     }
-  }, [tasks, dragItemType]);
+    
+    if (overData.type === "domain-drop") {
+      setOverDomainId(overData.domainId);
+    } else if (overData.type === "task") {
+      setOverDomainId(overData.domainId);
+    } else {
+      setOverDomainId(null);
+    }
+  }, [dragItemType]);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
@@ -372,18 +387,17 @@ export default function TasksPage() {
     setDragItemType(null);
 
     if (!over) return;
+    if (active.id === over.id) return;
 
-    const activeId = active.id.toString();
-    const overId = over.id.toString();
+    const activeData = active.data.current as DragData | undefined;
+    const overData = over.data.current as DragData | undefined;
+    
+    if (!activeData || !overData) return;
 
-    if (activeId === overId) return;
-
-    if (activeId.startsWith("domain-sort-") && overId.startsWith("domain-sort-")) {
-      const activeDomainId = activeId.replace("domain-sort-", "");
-      const overDomainId = overId.replace("domain-sort-", "");
-      
-      const oldIndex = activeDomainsList.findIndex((d) => d.id === activeDomainId);
-      const newIndex = activeDomainsList.findIndex((d) => d.id === overDomainId);
+    // Handle domain reordering
+    if (activeData.type === "domain" && overData.type === "domain") {
+      const oldIndex = activeDomainsList.findIndex((d) => d.id === activeData.domain.id);
+      const newIndex = activeDomainsList.findIndex((d) => d.id === overData.domain.id);
 
       if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
         const newOrder = arrayMove(activeDomainsList, oldIndex, newIndex);
@@ -401,12 +415,13 @@ export default function TasksPage() {
       return;
     }
 
+    // Handle task reordering
+    if (activeData.type !== "task") return;
     if (!showDragHandle) return;
-    if (activeId.startsWith("domain-sort-")) return;
 
+    const activeId = active.id.toString();
     const currentTasks = optimisticTasks ?? serverTasks;
-    const activeTaskData = currentTasks.find((t) => t.id === activeId);
-    if (!activeTaskData) return;
+    const activeTaskData = activeData.task;
 
     const getGroupedTasks = (taskList: Task[]) => {
       const grouped: Record<string, Task[]> = {};
@@ -429,20 +444,21 @@ export default function TasksPage() {
     let targetDomainId: string;
     let targetIndex: number;
 
-    if (overId.startsWith("domain-")) {
-      targetDomainId = overId.replace("domain-", "");
+    if (overData.type === "domain-drop") {
+      // Dropped on an empty domain area
+      targetDomainId = overData.domainId;
       const domainTasks = currentGrouped[targetDomainId] || [];
       targetIndex = domainTasks.filter((t) => t.id !== activeId).length;
-    } else if (overId.startsWith("domain-sort-")) {
-      return;
-    } else {
-      const overTask = currentTasks.find((t) => t.id === overId);
-      if (!overTask) return;
-      targetDomainId = overTask.domainId;
+    } else if (overData.type === "task") {
+      // Dropped on another task
+      targetDomainId = overData.domainId;
       const domainTasks = currentGrouped[targetDomainId] || [];
       const filteredTasks = domainTasks.filter((t) => t.id !== activeId);
-      const overIndex = filteredTasks.findIndex((t) => t.id === overId);
+      const overIndex = filteredTasks.findIndex((t) => t.id === overData.task.id);
       targetIndex = Math.max(0, overIndex >= 0 ? overIndex : filteredTasks.length);
+    } else {
+      // Dropped on a domain header - ignore
+      return;
     }
 
     targetIndex = Math.max(0, targetIndex);

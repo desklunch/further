@@ -31,9 +31,9 @@ export function DroppableDomain({
   activeTaskId,
 }: DroppableDomainProps) {
   const { setNodeRef } = useDroppable({
-    id: `domain-${domainId}`,
+    id: `domain-drop-${domainId}`,
     data: {
-      type: "domain",
+      type: "domain-drop",
       domainId,
     },
   });
