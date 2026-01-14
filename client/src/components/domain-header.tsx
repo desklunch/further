@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from "react";
+import { useDroppable } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Plus, Pencil, GripVertical, Check, X, ChevronRight, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { Domain } from "@shared/schema";
 
 interface DomainHeaderProps {
@@ -14,6 +16,7 @@ interface DomainHeaderProps {
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
   isCollapsed?: boolean;
   onToggleCollapse?: (domainId: string) => void;
+  isDropTarget?: boolean;
 }
 
 export function DomainHeader({ 
@@ -25,10 +28,20 @@ export function DomainHeader({
   dragHandleProps,
   isCollapsed = false,
   onToggleCollapse,
+  isDropTarget = false,
 }: DomainHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(domain.name);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const { setNodeRef } = useDroppable({
+    id: `domain-drop-${domain.id}`,
+    data: {
+      type: "domain",
+      domainId: domain.id,
+    },
+    disabled: !isCollapsed,
+  });
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -64,7 +77,13 @@ export function DomainHeader({
   };
 
   return (
-    <div className="sticky top-[57px] z-30 flex items-center justify-between gap-4 border-b bg-muted/50 px-4 py-4 backdrop-blur-sm">
+    <div 
+      ref={isCollapsed ? setNodeRef : undefined}
+      className={cn(
+        "sticky top-[57px] z-30 flex items-center justify-between gap-4 border-b bg-muted/50 px-4 py-4 backdrop-blur-sm transition-colors",
+        isDropTarget && "bg-primary/10 border-primary ring-2 ring-primary/30"
+      )}
+    >
       <div className="flex items-center gap-2">
         {onToggleCollapse && (
           <Button

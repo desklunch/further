@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -22,7 +22,6 @@ export default function TasksPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showGlobalAddDialog, setShowGlobalAddDialog] = useState(false);
   const [collapsedDomains, setCollapsedDomains] = useState<Set<string>>(new Set());
-  const collapsedBeforeDragRef = useRef<Set<string>>(new Set());
 
   const { data: domains = [], isLoading: domainsLoading } = useQuery<Domain[]>({
     queryKey: ["/api/domains"],
@@ -249,16 +248,6 @@ export default function TasksPage() {
     });
   };
 
-  const wrappedHandleDragStart = (event: Parameters<typeof handleDragStart>[0]) => {
-    collapsedBeforeDragRef.current = new Set(collapsedDomains);
-    setCollapsedDomains(new Set());
-    handleDragStart(event);
-  };
-
-  const wrappedHandleDragEnd = (event: Parameters<typeof handleDragEnd>[0]) => {
-    handleDragEnd(event);
-    setCollapsedDomains(collapsedBeforeDragRef.current);
-  };
 
   const isLoading = domainsLoading || tasksLoading;
   
@@ -281,16 +270,17 @@ export default function TasksPage() {
           <DndContext
             sensors={sensors}
             collisionDetection={collisionDetection}
-            onDragStart={wrappedHandleDragStart}
+            onDragStart={handleDragStart}
             onDragOver={handleDragOver}
-            onDragEnd={wrappedHandleDragEnd}
+            onDragEnd={handleDragEnd}
           >
             <div className="mx-auto max-w-6xl pb-8" data-testid="task-list-container">
               {activeDomainsList.map((domain) => {
                 const domainTasks = localTasksByDomain[domain.id] || [];
                 const isAddingHere = addingToDomainId === domain.id;
 
-                const isCollapsed = collapsedDomains.has(domain.id) && !isDragActive;
+                const isCollapsed = collapsedDomains.has(domain.id);
+                const isDropTarget = isDragActive && hoverDomainId === domain.id && isCollapsed;
 
                 return (
                   <div key={domain.id} data-testid={`domain-section-${domain.id}`}>
@@ -302,6 +292,7 @@ export default function TasksPage() {
                       showDragHandle={false}
                       isCollapsed={isCollapsed}
                       onToggleCollapse={handleToggleCollapse}
+                      isDropTarget={isDropTarget}
                     />
                     {isAddingHere && (
                       <InlineTaskForm
