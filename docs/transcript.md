@@ -8,6 +8,14 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ## 2026-01-15
 
+### Habit Options DnD Aligned with Guidelines
+- **02:35 UTC** | Checkpoint `26b31a48` | Updated habit options DnD to align with guidelines.md
+- **02:35 UTC** | Added DragOverlay for ghost element following cursor
+- **02:30 UTC** | Added drop indicator line at insertion position
+- **02:30 UTC** | EndDropZone uses disabled prop instead of conditional rendering
+- **02:25 UTC** | Removed CSS transform from sortable items (opacity only for ghosted effect)
+- **02:25 UTC** | Added drag state tracking (activeOption, activeHabitId, dropTarget)
+
 ### v0.3.0 Implementation Complete
 - **00:20 UTC** | E2E tests passed for Today view, habits, and inbox conversion
 - **00:15 UTC** | Enhanced /habits page with inline editing of habit properties and option renaming

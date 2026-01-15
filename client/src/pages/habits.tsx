@@ -21,12 +21,17 @@ import {
 } from "lucide-react";
 import {
   DndContext,
+  DragOverlay,
+  pointerWithin,
   closestCenter,
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   type DragEndEvent,
   type DragStartEvent,
+  type DragOverEvent,
+  type CollisionDetection,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -34,7 +39,6 @@ import {
   useSortable,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import type { Domain, HabitDefinition, HabitOption } from "@shared/schema";
 
 interface HabitWithOptions extends HabitDefinition {
@@ -145,6 +149,11 @@ export default function HabitsPage() {
   });
 
   const [localOptionOrder, setLocalOptionOrder] = useState<Record<string, HabitOption[]>>({});
+  
+  // DnD state per guidelines
+  const [activeOption, setActiveOption] = useState<HabitOption | null>(null);
+  const [activeHabitId, setActiveHabitId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ habitId: string; index: number } | null>(null);
 
   const reorderOptionsMutation = useMutation({
     mutationFn: async ({ habitId, orderedIds }: { habitId: string; orderedIds: string[] }) => {
@@ -180,12 +189,63 @@ export default function HabitsPage() {
     return localOptionOrder[habit.id] || habit.options;
   };
 
+  // Custom collision detection per guidelines
+  const customCollisionDetection: CollisionDetection = (args) => {
+    const pointerCollisions = pointerWithin(args);
+    if (pointerCollisions.length === 0) return closestCenter(args);
+    const itemCollisions = pointerCollisions.filter(
+      (c) => !String(c.id).startsWith("end-zone-")
+    );
+    return itemCollisions.length > 0 ? itemCollisions : pointerCollisions;
+  };
+
+  const handleOptionDragStart = (habitId: string, displayedOptions: HabitOption[]) => (event: DragStartEvent) => {
+    const option = displayedOptions.find(o => o.id === event.active.id);
+    if (option) {
+      setActiveOption(option);
+      setActiveHabitId(habitId);
+    }
+  };
+
+  const handleOptionDragOver = (habitId: string, displayedOptions: HabitOption[]) => (event: DragOverEvent) => {
+    const { over } = event;
+    if (!over) {
+      setDropTarget(null);
+      return;
+    }
+
+    // Check if hovering over end zone
+    if (String(over.id).startsWith("end-zone-")) {
+      setDropTarget({ habitId, index: displayedOptions.length });
+      return;
+    }
+
+    // Find the index of the option being hovered over
+    const overIndex = displayedOptions.findIndex(o => o.id === over.id);
+    if (overIndex !== -1) {
+      setDropTarget({ habitId, index: overIndex });
+    }
+  };
+
   const handleOptionDragEnd = (habitId: string, displayedOptions: HabitOption[]) => (event: DragEndEvent) => {
     const { active, over } = event;
+    
+    // Clear drag state
+    setActiveOption(null);
+    setActiveHabitId(null);
+    setDropTarget(null);
+
     if (!over || active.id === over.id) return;
 
     const oldIndex = displayedOptions.findIndex(o => o.id === active.id);
-    const newIndex = displayedOptions.findIndex(o => o.id === over.id);
+    let newIndex: number;
+
+    // Check if dropped on end zone
+    if (String(over.id).startsWith("end-zone-")) {
+      newIndex = displayedOptions.length - 1;
+    } else {
+      newIndex = displayedOptions.findIndex(o => o.id === over.id);
+    }
     
     if (oldIndex === -1 || newIndex === -1) return;
 
@@ -541,31 +601,58 @@ export default function HabitsPage() {
                     <CardContent>
                       {(() => {
                         const displayOptions = getOptionsForHabit(habit);
+                        const isDragActive = activeOption !== null && activeHabitId === habit.id;
                         return (
                           <DndContext
                             sensors={sensors}
-                            collisionDetection={closestCenter}
+                            collisionDetection={customCollisionDetection}
+                            onDragStart={handleOptionDragStart(habit.id, displayOptions)}
+                            onDragOver={handleOptionDragOver(habit.id, displayOptions)}
                             onDragEnd={handleOptionDragEnd(habit.id, displayOptions)}
                           >
                             <SortableContext
                               items={displayOptions.map(o => o.id)}
                               strategy={verticalListSortingStrategy}
                             >
-                              <div className="flex flex-col gap-1">
-                                {displayOptions.map(option => (
-                                  <SortableOption
-                                    key={option.id}
-                                    option={option}
-                                    onSave={(label) => updateOptionMutation.mutate({ optionId: option.id, label })}
-                                    onDelete={() => deleteOptionMutation.mutate(option.id)}
-                                  />
+                              <div className="flex flex-col">
+                                {displayOptions.map((option, index) => (
+                                  <div key={option.id}>
+                                    {/* Drop indicator above this item */}
+                                    {isDragActive && 
+                                     dropTarget?.habitId === habit.id && 
+                                     dropTarget?.index === index && 
+                                     activeOption?.id !== option.id && (
+                                      <DropIndicator />
+                                    )}
+                                    <SortableOption
+                                      option={option}
+                                      isDragging={activeOption?.id === option.id}
+                                      onSave={(label) => updateOptionMutation.mutate({ optionId: option.id, label })}
+                                      onDelete={() => deleteOptionMutation.mutate(option.id)}
+                                    />
+                                  </div>
                                 ))}
+                                {/* End drop zone - always render with ref, use disabled when not active */}
+                                <EndDropZone 
+                                  habitId={habit.id}
+                                  disabled={!isDragActive}
+                                  showIndicator={isDragActive && dropTarget?.habitId === habit.id && dropTarget?.index === displayOptions.length}
+                                />
                                 <AddOptionButton 
                                   habitId={habit.id} 
                                   onAdd={(label) => addOptionMutation.mutate({ habitId: habit.id, label })}
                                 />
                               </div>
                             </SortableContext>
+                            {/* DragOverlay shows ghost following cursor per guidelines */}
+                            <DragOverlay>
+                              {activeOption && activeHabitId === habit.id && (
+                                <div className="flex items-center gap-2 py-1.5 px-2 rounded-md bg-background border shadow-md">
+                                  <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-sm">{activeOption.label}</span>
+                                </div>
+                              )}
+                            </DragOverlay>
                           </DndContext>
                         );
                       })()}
@@ -581,12 +668,36 @@ export default function HabitsPage() {
   );
 }
 
+// Drop indicator line per guidelines
+function DropIndicator() {
+  return (
+    <div className="h-0.5 bg-primary rounded-full mx-2 my-0.5" />
+  );
+}
+
+// End drop zone for dropping at end of list per guidelines
+// Always apply ref unconditionally, use disabled prop to control active state
+function EndDropZone({ habitId, disabled, showIndicator }: { habitId: string; disabled: boolean; showIndicator: boolean }) {
+  const { setNodeRef } = useDroppable({
+    id: `end-zone-${habitId}`,
+    disabled,
+  });
+
+  return (
+    <div ref={setNodeRef} className={disabled ? "h-0" : "h-4 -mt-1"}>
+      {showIndicator && <DropIndicator />}
+    </div>
+  );
+}
+
 function SortableOption({ 
   option, 
+  isDragging,
   onSave, 
   onDelete 
 }: { 
   option: HabitOption; 
+  isDragging: boolean;
   onSave: (label: string) => void;
   onDelete: () => void;
 }) {
@@ -597,14 +708,10 @@ function SortableOption({
     attributes,
     listeners,
     setNodeRef,
-    transform,
-    transition,
-    isDragging,
   } = useSortable({ id: option.id });
 
+  // Per guidelines: only opacity, no transform (prevents item shifting)
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
     opacity: isDragging ? 0.5 : 1,
   };
 
