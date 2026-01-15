@@ -470,7 +470,7 @@ export default function HabitsPage() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-col gap-1">
                         {habit.options.map(option => (
                           <EditableOption
                             key={option.id}
@@ -526,9 +526,9 @@ function EditableOption({
 
   if (isEditing) {
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2 py-1 px-2 rounded-md bg-muted/50">
         <Input
-          className="h-6 w-24 text-xs"
+          className="h-7 flex-1 text-sm"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -541,32 +541,32 @@ function EditableOption({
   }
 
   return (
-    <Badge 
-      variant="outline"
-      className="flex items-center gap-1 cursor-pointer group"
+    <div 
+      className="flex items-center gap-2 py-1.5 px-2 rounded-md hover-elevate group"
+      data-testid={`row-option-${option.id}`}
     >
       <span 
         onClick={() => setIsEditing(true)}
-        className="hover:text-primary"
+        className="flex-1 text-sm cursor-pointer"
         data-testid={`text-option-${option.id}`}
       >
         {option.label}
       </span>
       <button
         onClick={() => setIsEditing(true)}
-        className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
         data-testid={`button-edit-option-${option.id}`}
       >
-        <Pencil className="h-2.5 w-2.5" />
+        <Pencil className="h-3.5 w-3.5" />
       </button>
       <button
         onClick={onDelete}
-        className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
+        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
         data-testid={`button-delete-option-${option.id}`}
       >
-        <X className="h-3 w-3" />
+        <X className="h-3.5 w-3.5" />
       </button>
-    </Badge>
+    </div>
   );
 }
 
@@ -584,10 +584,10 @@ function AddOptionButton({ habitId, onAdd }: { habitId: string; onAdd: (label: s
 
   if (isEditing) {
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2 py-1 px-2 rounded-md bg-muted/50">
         <Input
-          className="h-6 w-24 text-xs"
-          placeholder="Option"
+          className="h-7 flex-1 text-sm"
+          placeholder="New option..."
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           onKeyDown={(e) => {
@@ -597,23 +597,21 @@ function AddOptionButton({ habitId, onAdd }: { habitId: string; onAdd: (label: s
           autoFocus
           data-testid={`input-new-option-${habitId}`}
         />
-        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleSubmit}>
-          <Plus className="h-3 w-3" />
+        <Button size="sm" variant="ghost" onClick={handleSubmit}>
+          <Plus className="h-4 w-4" />
         </Button>
       </div>
     );
   }
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="h-6 text-xs"
+    <button
+      className="flex items-center gap-2 py-1.5 px-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover-elevate"
       onClick={() => setIsEditing(true)}
       data-testid={`button-add-option-to-${habitId}`}
     >
-      <Plus className="h-3 w-3 mr-1" />
-      Add
-    </Button>
+      <Plus className="h-3.5 w-3.5" />
+      Add option
+    </button>
   );
 }
