@@ -8,6 +8,13 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ## 2026-01-15
 
+### Unified Task Row Component with Age Display
+- **03:45 UTC** | Checkpoint `55266c0d` | Unified task rows on Today and Tasks pages
+- **03:45 UTC** | Today page now uses shared `TaskRowContent` component
+- **03:40 UTC** | Added task age display (Xd format) before property chips
+- **03:40 UTC** | Age color coding: muted (<7d), yellow (7-13d), red (>=14d)
+- **03:35 UTC** | Cleaned up unused imports (Checkbox, Pencil, valence icons)
+
 ### Fix: Inbox Conversion Date Default
 - **03:00 UTC** | Fixed "Add to Today" defaulting to yesterday instead of today
 - **03:00 UTC** | Root cause: `new Date("YYYY-MM-DD")` parses as UTC, shifts to previous day in local TZ
