@@ -90,6 +90,7 @@ export interface IStorage {
   createHabitOption(option: InsertHabitOption): Promise<HabitOption>;
   updateHabitOption(id: string, updates: Partial<InsertHabitOption>): Promise<HabitOption | undefined>;
   deleteHabitOption(id: string): Promise<void>;
+  reorderHabitOptions(habitId: string, orderedIds: string[]): Promise<void>;
   
   getHabitDailyEntry(habitId: string, date: string): Promise<HabitDailyEntry | undefined>;
   getHabitDailyEntriesForDate(userId: string, date: string): Promise<HabitDailyEntry[]>;
@@ -793,6 +794,15 @@ export class DatabaseStorage implements IStorage {
 
   async deleteHabitOption(id: string): Promise<void> {
     await db.delete(habitOptions).where(eq(habitOptions.id, id));
+  }
+
+  async reorderHabitOptions(habitId: string, orderedIds: string[]): Promise<void> {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db
+        .update(habitOptions)
+        .set({ sortOrder: i })
+        .where(and(eq(habitOptions.id, orderedIds[i]), eq(habitOptions.habitId, habitId)));
+    }
   }
 
   async getHabitDailyEntry(habitId: string, date: string): Promise<HabitDailyEntry | undefined> {

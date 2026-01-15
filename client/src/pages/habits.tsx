@@ -16,8 +16,25 @@ import {
   X, 
   Sparkles,
   Pencil,
-  Check
+  Check,
+  GripVertical
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { Domain, HabitDefinition, HabitOption } from "@shared/schema";
 
 interface HabitWithOptions extends HabitDefinition {
@@ -126,6 +143,58 @@ export default function HabitsPage() {
       toast({ title: "Failed to delete option", variant: "destructive" });
     },
   });
+
+  const [localOptionOrder, setLocalOptionOrder] = useState<Record<string, HabitOption[]>>({});
+
+  const reorderOptionsMutation = useMutation({
+    mutationFn: async ({ habitId, orderedIds }: { habitId: string; orderedIds: string[] }) => {
+      return apiRequest("POST", `/api/habits/${habitId}/options/reorder`, { orderedIds });
+    },
+    onSuccess: (_, { habitId }) => {
+      setLocalOptionOrder(prev => {
+        const next = { ...prev };
+        delete next[habitId];
+        return next;
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
+    },
+    onError: (_, { habitId }) => {
+      setLocalOptionOrder(prev => {
+        const next = { ...prev };
+        delete next[habitId];
+        return next;
+      });
+      toast({ title: "Failed to reorder options", variant: "destructive" });
+    },
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  const getOptionsForHabit = (habit: HabitWithOptions): HabitOption[] => {
+    return localOptionOrder[habit.id] || habit.options;
+  };
+
+  const handleOptionDragEnd = (habitId: string, displayedOptions: HabitOption[]) => (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = displayedOptions.findIndex(o => o.id === active.id);
+    const newIndex = displayedOptions.findIndex(o => o.id === over.id);
+    
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(displayedOptions, oldIndex, newIndex);
+    setLocalOptionOrder(prev => ({ ...prev, [habitId]: reordered }));
+    
+    const orderedIds = reordered.map(o => o.id);
+    reorderOptionsMutation.mutate({ habitId, orderedIds });
+  };
 
   const resetForm = () => {
     setNewHabitName("");
@@ -470,20 +539,36 @@ export default function HabitsPage() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex flex-col gap-1">
-                        {habit.options.map(option => (
-                          <EditableOption
-                            key={option.id}
-                            option={option}
-                            onSave={(label) => updateOptionMutation.mutate({ optionId: option.id, label })}
-                            onDelete={() => deleteOptionMutation.mutate(option.id)}
-                          />
-                        ))}
-                        <AddOptionButton 
-                          habitId={habit.id} 
-                          onAdd={(label) => addOptionMutation.mutate({ habitId: habit.id, label })}
-                        />
-                      </div>
+                      {(() => {
+                        const displayOptions = getOptionsForHabit(habit);
+                        return (
+                          <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleOptionDragEnd(habit.id, displayOptions)}
+                          >
+                            <SortableContext
+                              items={displayOptions.map(o => o.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              <div className="flex flex-col gap-1">
+                                {displayOptions.map(option => (
+                                  <SortableOption
+                                    key={option.id}
+                                    option={option}
+                                    onSave={(label) => updateOptionMutation.mutate({ optionId: option.id, label })}
+                                    onDelete={() => deleteOptionMutation.mutate(option.id)}
+                                  />
+                                ))}
+                                <AddOptionButton 
+                                  habitId={habit.id} 
+                                  onAdd={(label) => addOptionMutation.mutate({ habitId: habit.id, label })}
+                                />
+                              </div>
+                            </SortableContext>
+                          </DndContext>
+                        );
+                      })()}
                     </CardContent>
                   </Card>
                 );
@@ -496,7 +581,7 @@ export default function HabitsPage() {
   );
 }
 
-function EditableOption({ 
+function SortableOption({ 
   option, 
   onSave, 
   onDelete 
@@ -507,6 +592,21 @@ function EditableOption({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [label, setLabel] = useState(option.label);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: option.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
 
   const handleSave = () => {
     if (label.trim() && label.trim() !== option.label) {
@@ -526,7 +626,14 @@ function EditableOption({
 
   if (isEditing) {
     return (
-      <div className="flex items-center gap-2 py-1 px-2 rounded-md bg-muted/50">
+      <div 
+        ref={setNodeRef}
+        style={style}
+        className="flex items-center gap-2 py-1 px-2 rounded-md bg-muted/50"
+      >
+        <div className="text-muted-foreground/50 cursor-not-allowed">
+          <GripVertical className="h-4 w-4" />
+        </div>
         <Input
           className="h-7 flex-1 text-sm"
           value={label}
@@ -542,9 +649,19 @@ function EditableOption({
 
   return (
     <div 
+      ref={setNodeRef}
+      style={style}
       className="flex items-center gap-2 py-1.5 px-2 rounded-md hover-elevate group"
       data-testid={`row-option-${option.id}`}
     >
+      <button
+        className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing touch-none"
+        {...attributes}
+        {...listeners}
+        data-testid={`button-drag-option-${option.id}`}
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
       <span 
         onClick={() => setIsEditing(true)}
         className="flex-1 text-sm cursor-pointer"

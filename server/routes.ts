@@ -591,6 +591,22 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/habits/:habitId/options/reorder", async (req, res) => {
+    try {
+      const { habitId } = req.params;
+      const result = z.object({ orderedIds: z.array(z.string()) }).safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({ error: result.error.errors });
+      }
+
+      await storage.reorderHabitOptions(habitId, result.data.orderedIds);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to reorder habit options" });
+    }
+  });
+
   app.post("/api/habits/:habitId/entries", async (req, res) => {
     try {
       const { habitId } = req.params;
