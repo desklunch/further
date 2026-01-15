@@ -12,6 +12,20 @@ function formatDate(dateStr: string | null | undefined): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+function getTaskAgeDays(createdAt: string | Date | null | undefined): number {
+  if (!createdAt) return 0;
+  const created = typeof createdAt === "string" ? new Date(createdAt) : createdAt;
+  const now = new Date();
+  const diffMs = now.getTime() - created.getTime();
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+}
+
+function getAgeColorClass(days: number): string {
+  if (days >= 14) return "text-red-600 dark:text-red-400";
+  if (days >= 7) return "text-yellow-600 dark:text-yellow-400";
+  return "text-muted-foreground";
+}
+
 interface DragHandleProps {
   attributes?: object;
   listeners?: object;
@@ -185,6 +199,18 @@ export function TaskRowContent({
         )}
 
         <div className="flex flex-wrap items-center gap-1 md:gap-2">
+          {/* Task age in days */}
+          {(() => {
+            const ageDays = getTaskAgeDays(task.createdAt);
+            return (
+              <span 
+                className={`text-xs font-medium ${getAgeColorClass(ageDays)}`}
+                data-testid={`text-task-age-${task.id}`}
+              >
+                ({ageDays}d)
+              </span>
+            );
+          })()}
           {task.priority && (
             <Badge variant="secondary" className="gap-1 text-xs">
               <Zap className="h-3 w-3" />

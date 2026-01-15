@@ -7,24 +7,20 @@ import { Link } from "wouter";
 import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { TaskEditDrawer } from "@/components/task-edit-drawer";
 import { InboxConversionDialog } from "@/components/inbox-conversion-dialog";
+import { TaskRowContent } from "@/components/task-row-content";
 import { 
   Plus, 
   CalendarDays, 
   Inbox as InboxIcon, 
-  Sparkles, 
-  Circle as CircleIcon, 
-  Triangle,
   X,
   Check,
   ChevronDown,
-  ChevronRight,
-  Pencil
+  ChevronRight
 } from "lucide-react";
 import type { 
   Task, 
@@ -361,12 +357,6 @@ export default function TodayPage() {
     }
   };
 
-  const getValenceIcon = (valence: number | null) => {
-    if (valence === -1) return <Triangle className="h-3 w-3 text-muted-foreground" />;
-    if (valence === 1) return <Sparkles className="h-3 w-3 text-muted-foreground" />;
-    return <CircleIcon className="h-3 w-3 text-muted-foreground" />;
-  };
-
   const renderHabit = (habit: HabitWithDetails) => {
     const options = habit.options || [];
     const selectedIds = habit.todayEntry?.selectedOptionIds || [];
@@ -443,37 +433,29 @@ export default function TodayPage() {
     );
   };
 
+  const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
+
   const renderTask = (task: Task, type: "scheduled" | "assigned") => {
+    const isHovered = hoveredTaskId === task.id;
     return (
       <div
         key={task.id}
-        className="flex items-center gap-3 px-3 py-2 rounded-md hover-elevate group"
+        className="flex items-center gap-3 px-3 py-2 rounded-md hover-elevate bg-background"
         data-testid={`row-${type}-task-${task.id}`}
+        onMouseEnter={() => setHoveredTaskId(task.id)}
+        onMouseLeave={() => setHoveredTaskId(null)}
       >
-        <Checkbox
-          checked={task.status === "completed"}
-          onCheckedChange={(checked) => {
-            if (checked) {
-              completeTaskMutation.mutate(task.id);
-            } else {
-              reopenTaskMutation.mutate(task.id);
-            }
-          }}
-          data-testid={`checkbox-task-${task.id}`}
+        <TaskRowContent
+          task={task}
+          isHovered={isHovered}
+          showDragHandle={false}
+          filterMode="all"
+          onComplete={(taskId) => completeTaskMutation.mutate(taskId)}
+          onReopen={(taskId) => reopenTaskMutation.mutate(taskId)}
+          onArchive={() => {}}
+          onEdit={(t) => setEditingTask(t)}
+          onTitleChange={(taskId, newTitle) => updateTaskMutation.mutate({ taskId, updates: { title: newTitle } })}
         />
-        <span className={`flex-1 text-sm ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
-          {task.title}
-        </span>
-        {getValenceIcon(task.valence)}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => setEditingTask(task)}
-          data-testid={`button-edit-task-${task.id}`}
-        >
-          <Pencil className="h-3 w-3" />
-        </Button>
       </div>
     );
   };
