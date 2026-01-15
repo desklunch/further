@@ -405,6 +405,62 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/inbox/:id/convert", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { 
+        title, 
+        domainId, 
+        priority, 
+        effortPoints, 
+        valence, 
+        dueDate, 
+        scheduledDate,
+        mode,
+        date 
+      } = req.body;
+      
+      if (!domainId) {
+        return res.status(400).json({ error: "domainId is required" });
+      }
+      if (!title) {
+        return res.status(400).json({ error: "title is required" });
+      }
+
+      const inboxItem = await storage.getInboxItem(id);
+      if (!inboxItem || inboxItem.status !== "untriaged") {
+        return res.status(404).json({ error: "Inbox item not found or already triaged" });
+      }
+
+      const task = await storage.createTask({
+        userId: DEFAULT_USER_ID,
+        domainId,
+        title,
+        priority: priority ?? 1,
+        effortPoints: effortPoints ?? null,
+        valence: valence ?? 0,
+        scheduledDate: scheduledDate ?? null,
+        dueDate: dueDate ?? null,
+        sourceInboxItemId: id,
+      });
+
+      if (mode === "add" && date) {
+        await storage.createTaskDayAssignment({
+          userId: DEFAULT_USER_ID,
+          taskId: task.id,
+          date,
+        });
+      }
+
+      await storage.convertInboxItem(id);
+
+      res.json({ task, converted: true });
+    } catch (error) {
+      console.error("Inbox convert error:", error);
+      res.status(500).json({ error: "Failed to convert inbox item" });
+    }
+  });
+
   app.get("/api/habits", async (req, res) => {
     try {
       // Include inactive habits for the management page

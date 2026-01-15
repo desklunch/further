@@ -10,11 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { TaskEditDrawer } from "@/components/task-edit-drawer";
+import { InboxConversionDialog } from "@/components/inbox-conversion-dialog";
 import { 
   Plus, 
   CalendarDays, 
@@ -50,12 +48,10 @@ interface TodayData {
   assignedTasks: Task[];
 }
 
-interface TriageDialogState {
+interface ConversionDialogState {
   open: boolean;
-  action: "add" | "schedule";
+  mode: "add" | "schedule";
   inboxItem: InboxItem | null;
-  domainId: string;
-  scheduledDate: string;
 }
 
 interface DomainContent {
@@ -75,12 +71,10 @@ export default function TodayPage() {
   const [editingInboxTitle, setEditingInboxTitle] = useState("");
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   
-  const [triageDialog, setTriageDialog] = useState<TriageDialogState>({
+  const [conversionDialog, setConversionDialog] = useState<ConversionDialogState>({
     open: false,
-    action: "add",
+    mode: "add",
     inboxItem: null,
-    domainId: "",
-    scheduledDate: todayStr,
   });
 
   const { data: domains = [] } = useQuery<Domain[]>({
@@ -127,36 +121,52 @@ export default function TodayPage() {
     },
   });
 
-  const triageInboxMutation = useMutation({
-    mutationFn: async ({ id, action, domainId, scheduledDate }: { 
-      id: string; 
-      action: "add" | "schedule" | "dismiss"; 
-      domainId?: string;
-      scheduledDate?: string;
+  const convertInboxMutation = useMutation({
+    mutationFn: async (data: {
+      inboxItemId: string;
+      title: string;
+      domainId: string;
+      priority: number;
+      effortPoints: number | null;
+      valence: number;
+      dueDate: string | null;
+      scheduledDate: string | null;
+      mode: "add" | "schedule";
     }): Promise<{ task?: Task; converted?: boolean }> => {
-      let res: Response;
-      if (action === "add") {
-        res = await apiRequest("POST", `/api/inbox/${id}/triage/add-to-today`, { domainId, date: todayStr });
-      } else if (action === "schedule") {
-        res = await apiRequest("POST", `/api/inbox/${id}/triage/schedule`, { domainId, scheduledDate });
-      } else {
-        res = await apiRequest("POST", `/api/inbox/${id}/dismiss`, {});
-      }
+      const res = await apiRequest("POST", `/api/inbox/${data.inboxItemId}/convert`, {
+        title: data.title,
+        domainId: data.domainId,
+        priority: data.priority,
+        effortPoints: data.effortPoints,
+        valence: data.valence,
+        dueDate: data.dueDate,
+        scheduledDate: data.scheduledDate,
+        mode: data.mode,
+        date: data.mode === "add" ? todayStr : undefined,
+      });
       return res.json();
     },
-    onSuccess: (response, variables) => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/today"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      const actionText = variables.action === "add" ? "Added to tasks" : 
-                         variables.action === "schedule" ? "Scheduled" : "Dismissed";
+      const actionText = variables.mode === "add" ? "Added to tasks" : "Scheduled";
       toast({ title: actionText });
-      
-      if ((variables.action === "add" || variables.action === "schedule") && response?.task) {
-        setEditingTask(response.task);
-      }
     },
     onError: () => {
-      toast({ title: "Failed to triage inbox item", variant: "destructive" });
+      toast({ title: "Failed to convert inbox item", variant: "destructive" });
+    },
+  });
+
+  const dismissInboxMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("POST", `/api/inbox/${id}/dismiss`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/today"] });
+      toast({ title: "Dismissed" });
+    },
+    onError: () => {
+      toast({ title: "Failed to dismiss inbox item", variant: "destructive" });
     },
   });
 
@@ -298,30 +308,32 @@ export default function TodayPage() {
     });
   };
 
-  const openTriageDialog = (item: InboxItem, action: "add" | "schedule") => {
-    setTriageDialog({
+  const openConversionDialog = (item: InboxItem, mode: "add" | "schedule") => {
+    setConversionDialog({
       open: true,
-      action,
+      mode,
       inboxItem: item,
-      domainId: domains[0]?.id || "",
-      scheduledDate: todayStr,
     });
   };
 
-  const closeTriageDialog = () => {
-    setTriageDialog(prev => ({ ...prev, open: false, inboxItem: null }));
+  const closeConversionDialog = () => {
+    setConversionDialog({ open: false, mode: "add", inboxItem: null });
   };
 
-  const handleTriageSubmit = () => {
-    if (!triageDialog.inboxItem || !triageDialog.domainId) return;
-    
-    triageInboxMutation.mutate({
-      id: triageDialog.inboxItem.id,
-      action: triageDialog.action,
-      domainId: triageDialog.domainId,
-      scheduledDate: triageDialog.action === "schedule" ? triageDialog.scheduledDate : undefined,
+  const handleConversionSubmit = (data: {
+    inboxItemId: string;
+    title: string;
+    domainId: string;
+    priority: number;
+    effortPoints: number | null;
+    valence: number;
+    dueDate: string | null;
+    scheduledDate: string | null;
+  }) => {
+    convertInboxMutation.mutate({
+      ...data,
+      mode: conversionDialog.mode,
     });
-    closeTriageDialog();
   };
 
   const startEditingInbox = (item: InboxItem) => {
@@ -592,75 +604,89 @@ export default function TodayPage() {
               </p>
             ) : (
               <div className="space-y-2">
-                {inboxItems.map(item => (
-                  <Card key={item.id} data-testid={`card-inbox-${item.id}`}>
-                    <CardContent className="py-3 px-4">
-                      <div className="flex items-center justify-between gap-4">
-                        {editingInboxId === item.id ? (
-                          <Input
-                            value={editingInboxTitle}
-                            onChange={(e) => setEditingInboxTitle(e.target.value)}
-                            onKeyDown={handleInboxKeyDown}
-                            onBlur={saveInboxEdit}
-                            autoFocus
-                            className="flex-1"
-                            data-testid={`input-edit-inbox-${item.id}`}
-                          />
-                        ) : (
-                          <span 
-                            className="text-sm flex-1 cursor-pointer hover:text-primary"
-                            onClick={() => startEditingInbox(item)}
-                            data-testid={`text-inbox-title-${item.id}`}
-                          >
-                            {item.title}
-                          </span>
-                        )}
-                        <div className="flex items-center gap-1">
-                          {editingInboxId !== item.id && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
+                {inboxItems.map(item => {
+                  const isEditing = editingInboxId === item.id;
+                  return (
+                    <Card key={item.id} data-testid={`card-inbox-${item.id}`}>
+                      <CardContent className="py-3 px-4">
+                        <div className="flex items-center justify-between gap-4">
+                          {isEditing ? (
+                            <Input
+                              value={editingInboxTitle}
+                              onChange={(e) => setEditingInboxTitle(e.target.value)}
+                              onKeyDown={handleInboxKeyDown}
+                              autoFocus
+                              className="flex-1"
+                              data-testid={`input-edit-inbox-${item.id}`}
+                            />
+                          ) : (
+                            <span 
+                              className="text-sm flex-1 cursor-pointer hover:text-primary"
                               onClick={() => startEditingInbox(item)}
-                              title="Edit"
-                              data-testid={`button-edit-inbox-${item.id}`}
+                              data-testid={`text-inbox-title-${item.id}`}
                             >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
+                              {item.title}
+                            </span>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openTriageDialog(item, "add")}
-                            disabled={!domains.length}
-                            title="Add to today"
-                            data-testid={`button-triage-add-${item.id}`}
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openTriageDialog(item, "schedule")}
-                            disabled={!domains.length}
-                            title="Schedule"
-                            data-testid={`button-triage-schedule-${item.id}`}
-                          >
-                            <CalendarDays className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => triageInboxMutation.mutate({ id: item.id, action: "dismiss" })}
-                            title="Dismiss"
-                            data-testid={`button-triage-dismiss-${item.id}`}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            {isEditing ? (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={saveInboxEdit}
+                                  data-testid={`button-save-inbox-${item.id}`}
+                                >
+                                  Save
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={cancelEditingInbox}
+                                  data-testid={`button-cancel-inbox-${item.id}`}
+                                >
+                                  Cancel
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openConversionDialog(item, "add")}
+                                  disabled={!domains.length}
+                                  title="Add to today"
+                                  data-testid={`button-triage-add-${item.id}`}
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openConversionDialog(item, "schedule")}
+                                  disabled={!domains.length}
+                                  title="Schedule"
+                                  data-testid={`button-triage-schedule-${item.id}`}
+                                >
+                                  <CalendarDays className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => dismissInboxMutation.mutate(item.id)}
+                                  title="Dismiss"
+                                  data-testid={`button-triage-dismiss-${item.id}`}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </section>
@@ -688,69 +714,15 @@ export default function TodayPage() {
         </div>
       </main>
 
-      <Dialog open={triageDialog.open} onOpenChange={(open) => !open && closeTriageDialog()}>
-        <DialogContent data-testid="dialog-triage">
-          <DialogHeader>
-            <DialogTitle>
-              {triageDialog.action === "add" ? "Add to Today" : "Schedule Task"}
-            </DialogTitle>
-          </DialogHeader>
-          
-          {triageDialog.inboxItem && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                "{triageDialog.inboxItem.title}"
-              </p>
-              
-              <div className="space-y-2">
-                <Label htmlFor="triage-domain">Domain</Label>
-                <Select
-                  value={triageDialog.domainId}
-                  onValueChange={(value) => setTriageDialog(prev => ({ ...prev, domainId: value }))}
-                >
-                  <SelectTrigger id="triage-domain" data-testid="select-triage-domain">
-                    <SelectValue placeholder="Select a domain" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {domains.filter(d => d.isActive).map(domain => (
-                      <SelectItem key={domain.id} value={domain.id}>
-                        {domain.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {triageDialog.action === "schedule" && (
-                <div className="space-y-2">
-                  <Label htmlFor="triage-date">Scheduled Date</Label>
-                  <Input
-                    id="triage-date"
-                    type="date"
-                    value={triageDialog.scheduledDate}
-                    onChange={(e) => setTriageDialog(prev => ({ ...prev, scheduledDate: e.target.value }))}
-                    min={todayStr}
-                    data-testid="input-triage-date"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={closeTriageDialog} data-testid="button-triage-cancel">
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleTriageSubmit} 
-              disabled={!triageDialog.domainId || triageInboxMutation.isPending}
-              data-testid="button-triage-confirm"
-            >
-              {triageDialog.action === "add" ? "Add to Today" : "Schedule"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <InboxConversionDialog
+        open={conversionDialog.open}
+        onClose={closeConversionDialog}
+        inboxItem={conversionDialog.inboxItem}
+        domains={domains}
+        mode={conversionDialog.mode}
+        todayDate={todayStr}
+        onSubmit={handleConversionSubmit}
+      />
 
       <TaskEditDrawer
         task={editingTask}
