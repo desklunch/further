@@ -199,15 +199,16 @@ export function TaskRowContent({
         )}
 
         <div className="flex flex-wrap items-center gap-1 md:gap-2">
-          {/* Task age in days */}
+          {/* Task age in days - only show if >= 4 days */}
           {(() => {
             const ageDays = getTaskAgeDays(task.createdAt);
+            if (ageDays < 4) return null;
             return (
               <span 
                 className={`text-xs font-medium ${getAgeColorClass(ageDays)}`}
                 data-testid={`text-task-age-${task.id}`}
               >
-                ({ageDays}d)
+                {ageDays}d
               </span>
             );
           })()}
