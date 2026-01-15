@@ -294,6 +294,25 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/inbox/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { title } = req.body;
+      
+      if (!title || typeof title !== "string") {
+        return res.status(400).json({ error: "title is required" });
+      }
+
+      const item = await storage.updateInboxItem(id, { title });
+      if (!item) {
+        return res.status(404).json({ error: "Inbox item not found" });
+      }
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update inbox item" });
+    }
+  });
+
   app.post("/api/inbox/:id/triage/add-to-today", async (req, res) => {
     try {
       const { id } = req.params;
@@ -320,6 +339,7 @@ export async function registerRoutes(
         valence: 0,
         scheduledDate: null,
         dueDate: null,
+        sourceInboxItemId: id,
       });
 
       await storage.createTaskDayAssignment({
@@ -328,9 +348,9 @@ export async function registerRoutes(
         date,
       });
 
-      await storage.triageInboxItem(id);
+      await storage.convertInboxItem(id);
 
-      res.json({ task, triaged: true });
+      res.json({ task, converted: true });
     } catch (error) {
       console.error("Triage add-to-today error:", error);
       res.status(500).json({ error: "Failed to triage inbox item" });
@@ -360,27 +380,28 @@ export async function registerRoutes(
         valence: 0,
         scheduledDate,
         dueDate: null,
+        sourceInboxItemId: id,
       });
 
-      await storage.triageInboxItem(id);
+      await storage.convertInboxItem(id);
 
-      res.json({ task, triaged: true });
+      res.json({ task, converted: true });
     } catch (error) {
       console.error("Triage schedule error:", error);
       res.status(500).json({ error: "Failed to triage inbox item" });
     }
   });
 
-  app.post("/api/inbox/:id/archive", async (req, res) => {
+  app.post("/api/inbox/:id/dismiss", async (req, res) => {
     try {
       const { id } = req.params;
-      const item = await storage.archiveInboxItem(id);
+      const item = await storage.dismissInboxItem(id);
       if (!item) {
         return res.status(404).json({ error: "Inbox item not found" });
       }
       res.json(item);
     } catch (error) {
-      res.status(500).json({ error: "Failed to archive inbox item" });
+      res.status(500).json({ error: "Failed to dismiss inbox item" });
     }
   });
 

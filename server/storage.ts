@@ -74,8 +74,9 @@ export interface IStorage {
   getInboxItems(userId: string): Promise<InboxItem[]>;
   getInboxItem(id: string): Promise<InboxItem | undefined>;
   createInboxItem(item: InsertInboxItem): Promise<InboxItem>;
-  triageInboxItem(id: string): Promise<InboxItem | undefined>;
-  archiveInboxItem(id: string): Promise<InboxItem | undefined>;
+  updateInboxItem(id: string, updates: { title?: string }): Promise<InboxItem | undefined>;
+  convertInboxItem(id: string): Promise<InboxItem | undefined>;
+  dismissInboxItem(id: string): Promise<InboxItem | undefined>;
   
   getHabitDefinitions(userId: string, includeInactive?: boolean): Promise<HabitDefinition[]>;
   getHabitDefinition(id: string): Promise<HabitDefinition | undefined>;
@@ -653,24 +654,33 @@ export class DatabaseStorage implements IStorage {
     return newItem;
   }
 
-  async triageInboxItem(id: string): Promise<InboxItem | undefined> {
-    const now = new Date();
-    const [triaged] = await db
+  async updateInboxItem(id: string, updates: { title?: string }): Promise<InboxItem | undefined> {
+    const [updated] = await db
       .update(inboxItems)
-      .set({ status: "triaged", triagedAt: now })
+      .set(updates)
       .where(eq(inboxItems.id, id))
       .returning();
-    return triaged;
+    return updated;
   }
 
-  async archiveInboxItem(id: string): Promise<InboxItem | undefined> {
+  async convertInboxItem(id: string): Promise<InboxItem | undefined> {
     const now = new Date();
-    const [archived] = await db
+    const [converted] = await db
       .update(inboxItems)
-      .set({ status: "triaged", triagedAt: now })
+      .set({ status: "converted", triagedAt: now })
       .where(eq(inboxItems.id, id))
       .returning();
-    return archived;
+    return converted;
+  }
+
+  async dismissInboxItem(id: string): Promise<InboxItem | undefined> {
+    const now = new Date();
+    const [dismissed] = await db
+      .update(inboxItems)
+      .set({ status: "dismissed", triagedAt: now })
+      .where(eq(inboxItems.id, id))
+      .returning();
+    return dismissed;
   }
 
   async getHabitDefinitions(userId: string, includeInactive: boolean = false): Promise<HabitDefinition[]> {

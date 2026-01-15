@@ -6,6 +6,32 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ---
 
+## 2026-01-15
+
+### v0.3.0 Implementation Complete
+- **00:20 UTC** | E2E tests passed for Today view, habits, and inbox conversion
+- **00:15 UTC** | Enhanced /habits page with inline editing of habit properties and option renaming
+- **00:10 UTC** | Inbox conversion flow: Domain selection dialog → create task → open editor
+- **00:05 UTC** | Inline task editing from Today (opens TaskEditDrawer on title click)
+- **00:00 UTC** | Inline InboxItem title editing in Today view
+
+### v0.3.0 - Today View Redesign
+- **23:55 UTC** | Checkpoint | Today view redesigned with domain-grouped layout
+- **23:55 UTC** | Each domain shows: habits → scheduled tasks → added tasks
+- **23:50 UTC** | Habit satisfied UX: Options collapse, show summary chips
+- **23:45 UTC** | Inbox section moved to bottom of Today view
+- **23:40 UTC** | Schema: Expanded InboxItem.status to untriaged/converted/dismissed
+- **23:40 UTC** | Schema: Added Task.sourceInboxItemId for inbox origin tracking
+
+### Key Architecture Decisions (v0.3.0)
+- Domains represent chronological phases of a day (mental model)
+- Satisfied habits collapse options but card remains visible
+- Clicking habit summary/header re-expands options
+- Inbox conversion requires domain selection (InboxItem has no domain)
+- sourceInboxItemId enables data integrity tracking
+
+---
+
 ## 2026-01-14
 
 ### v0.2 Bug Fixes

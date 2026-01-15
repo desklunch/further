@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { TaskEditDrawer } from "@/components/task-edit-drawer";
 import { 
   Plus, 
   CalendarDays, 
@@ -21,7 +23,10 @@ import {
   Circle as CircleIcon, 
   Triangle,
   X,
-  Check
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Pencil
 } from "lucide-react";
 import type { 
   Task, 
@@ -53,10 +58,22 @@ interface TriageDialogState {
   scheduledDate: string;
 }
 
+interface DomainContent {
+  domain: Domain;
+  habits: HabitWithDetails[];
+  scheduledTasks: Task[];
+  assignedTasks: Task[];
+}
+
 export default function TodayPage() {
   const { toast } = useToast();
   const [newInboxItem, setNewInboxItem] = useState("");
   const todayStr = format(new Date(), "yyyy-MM-dd");
+  const [collapsedDomains, setCollapsedDomains] = useState<Set<string>>(new Set());
+  const [collapsedHabits, setCollapsedHabits] = useState<Set<string>>(new Set());
+  const [editingInboxId, setEditingInboxId] = useState<string | null>(null);
+  const [editingInboxTitle, setEditingInboxTitle] = useState("");
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   
   const [triageDialog, setTriageDialog] = useState<TriageDialogState>({
     open: false,
@@ -96,30 +113,63 @@ export default function TodayPage() {
     },
   });
 
+  const updateInboxItemMutation = useMutation({
+    mutationFn: async ({ id, title }: { id: string; title: string }) => {
+      return apiRequest("PATCH", `/api/inbox/${id}`, { title });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/today"] });
+      setEditingInboxId(null);
+      setEditingInboxTitle("");
+    },
+    onError: () => {
+      toast({ title: "Failed to update inbox item", variant: "destructive" });
+    },
+  });
+
   const triageInboxMutation = useMutation({
     mutationFn: async ({ id, action, domainId, scheduledDate }: { 
       id: string; 
       action: "add" | "schedule" | "dismiss"; 
       domainId?: string;
       scheduledDate?: string;
-    }) => {
+    }): Promise<{ task?: Task; converted?: boolean }> => {
+      let res: Response;
       if (action === "add") {
-        return apiRequest("POST", `/api/inbox/${id}/triage/add-to-today`, { domainId, date: todayStr });
+        res = await apiRequest("POST", `/api/inbox/${id}/triage/add-to-today`, { domainId, date: todayStr });
       } else if (action === "schedule") {
-        return apiRequest("POST", `/api/inbox/${id}/triage/schedule`, { domainId, scheduledDate });
+        res = await apiRequest("POST", `/api/inbox/${id}/triage/schedule`, { domainId, scheduledDate });
       } else {
-        return apiRequest("POST", `/api/inbox/${id}/archive`, {});
+        res = await apiRequest("POST", `/api/inbox/${id}/dismiss`, {});
       }
+      return res.json();
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (response, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/today"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       const actionText = variables.action === "add" ? "Added to tasks" : 
                          variables.action === "schedule" ? "Scheduled" : "Dismissed";
       toast({ title: actionText });
+      
+      if ((variables.action === "add" || variables.action === "schedule") && response?.task) {
+        setEditingTask(response.task);
+      }
     },
     onError: () => {
       toast({ title: "Failed to triage inbox item", variant: "destructive" });
+    },
+  });
+
+  const updateTaskMutation = useMutation({
+    mutationFn: async ({ taskId, updates }: { taskId: string; updates: Record<string, unknown> }) => {
+      return apiRequest("PATCH", `/api/tasks/${taskId}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to update task", variant: "destructive" });
     },
   });
 
@@ -171,6 +221,28 @@ export default function TodayPage() {
     }, {} as Record<string, Domain>);
   }, [domains]);
 
+  const domainGroupedContent = useMemo((): DomainContent[] => {
+    if (!todayData) return [];
+    
+    const { habits = [], scheduledTasks = [], assignedTasks = [] } = todayData;
+    
+    const activeDomains = domains.filter(d => d.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+    
+    return activeDomains.map(domain => ({
+      domain,
+      habits: habits.filter(h => h.domainId === domain.id && h.isActive),
+      scheduledTasks: scheduledTasks.filter(t => t.domainId === domain.id),
+      assignedTasks: assignedTasks.filter(t => t.domainId === domain.id),
+    })).filter(dc => dc.habits.length > 0 || dc.scheduledTasks.length > 0 || dc.assignedTasks.length > 0);
+  }, [domains, todayData]);
+
+  const emptyDomains = useMemo(() => {
+    if (!todayData) return [];
+    const activeDomains = domains.filter(d => d.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+    const domainIdsWithContent = new Set(domainGroupedContent.map(dc => dc.domain.id));
+    return activeDomains.filter(d => !domainIdsWithContent.has(d.id));
+  }, [domains, domainGroupedContent, todayData]);
+
   const handleAddInboxItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (newInboxItem.trim()) {
@@ -191,6 +263,39 @@ export default function TodayPage() {
     }
     
     saveHabitEntryMutation.mutate({ habitId: habit.id, selectedOptionIds: newSelected });
+  };
+
+  const isHabitSatisfied = (habit: HabitWithDetails): boolean => {
+    const selectedCount = habit.todayEntry?.selectedOptionIds?.length || 0;
+    if (habit.selectionType === "single") {
+      return selectedCount >= 1;
+    } else {
+      return selectedCount >= (habit.minRequired || 1);
+    }
+  };
+
+  const toggleDomainCollapse = (domainId: string) => {
+    setCollapsedDomains(prev => {
+      const next = new Set(prev);
+      if (next.has(domainId)) {
+        next.delete(domainId);
+      } else {
+        next.add(domainId);
+      }
+      return next;
+    });
+  };
+
+  const toggleHabitCollapse = (habitId: string) => {
+    setCollapsedHabits(prev => {
+      const next = new Set(prev);
+      if (next.has(habitId)) {
+        next.delete(habitId);
+      } else {
+        next.add(habitId);
+      }
+      return next;
+    });
   };
 
   const openTriageDialog = (item: InboxItem, action: "add" | "schedule") => {
@@ -219,10 +324,146 @@ export default function TodayPage() {
     closeTriageDialog();
   };
 
+  const startEditingInbox = (item: InboxItem) => {
+    setEditingInboxId(item.id);
+    setEditingInboxTitle(item.title);
+  };
+
+  const cancelEditingInbox = () => {
+    setEditingInboxId(null);
+    setEditingInboxTitle("");
+  };
+
+  const saveInboxEdit = () => {
+    if (editingInboxId && editingInboxTitle.trim()) {
+      updateInboxItemMutation.mutate({ id: editingInboxId, title: editingInboxTitle.trim() });
+    }
+  };
+
+  const handleInboxKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      saveInboxEdit();
+    } else if (e.key === "Escape") {
+      cancelEditingInbox();
+    }
+  };
+
   const getValenceIcon = (valence: number | null) => {
     if (valence === -1) return <Triangle className="h-3 w-3 text-muted-foreground" />;
     if (valence === 1) return <Sparkles className="h-3 w-3 text-muted-foreground" />;
     return <CircleIcon className="h-3 w-3 text-muted-foreground" />;
+  };
+
+  const renderHabit = (habit: HabitWithDetails) => {
+    const options = habit.options || [];
+    const selectedIds = habit.todayEntry?.selectedOptionIds || [];
+    const satisfied = isHabitSatisfied(habit);
+    const isCollapsed = satisfied && !collapsedHabits.has(habit.id);
+    const selectedOptions = options.filter(o => selectedIds.includes(o.id));
+
+    return (
+      <div 
+        key={habit.id} 
+        className={`rounded-md border p-3 ${satisfied ? "bg-muted/30" : "bg-card"}`}
+        data-testid={`habit-card-${habit.id}`}
+      >
+        <Collapsible open={!isCollapsed}>
+          <CollapsibleTrigger 
+            className="flex items-center justify-between w-full text-left"
+            onClick={() => satisfied && toggleHabitCollapse(habit.id)}
+          >
+            <div className="flex items-center gap-2">
+              {satisfied && (
+                isCollapsed ? 
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" /> :
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span className={`font-medium text-sm ${satisfied ? "text-muted-foreground" : ""}`}>
+                {habit.name}
+              </span>
+            </div>
+            {satisfied && isCollapsed && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  Satisfied
+                </span>
+                <div className="flex gap-1 flex-wrap max-w-[200px]">
+                  {selectedOptions.slice(0, 3).map(opt => (
+                    <Badge key={opt.id} variant="secondary" className="text-xs">
+                      {opt.label}
+                    </Badge>
+                  ))}
+                  {selectedOptions.length > 3 && (
+                    <Badge variant="secondary" className="text-xs">
+                      +{selectedOptions.length - 3}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {options.map(option => {
+                const isSelected = selectedIds.includes(option.id);
+                return (
+                  <Button
+                    key={option.id}
+                    variant={isSelected ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleToggleHabitOption(habit, option.id)}
+                    data-testid={`button-habit-option-${option.id}`}
+                  >
+                    {option.label}
+                  </Button>
+                );
+              })}
+            </div>
+            {habit.selectionType === "multi" && habit.minRequired && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Select at least {habit.minRequired} • {selectedIds.length} selected
+              </p>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+    );
+  };
+
+  const renderTask = (task: Task, type: "scheduled" | "assigned") => {
+    return (
+      <div
+        key={task.id}
+        className="flex items-center gap-3 px-3 py-2 rounded-md hover-elevate group"
+        data-testid={`row-${type}-task-${task.id}`}
+      >
+        <Checkbox
+          checked={task.status === "completed"}
+          onCheckedChange={(checked) => {
+            if (checked) {
+              completeTaskMutation.mutate(task.id);
+            } else {
+              reopenTaskMutation.mutate(task.id);
+            }
+          }}
+          data-testid={`checkbox-task-${task.id}`}
+        />
+        <span className={`flex-1 text-sm ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
+          {task.title}
+        </span>
+        {getValenceIcon(task.valence)}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={() => setEditingTask(task)}
+          data-testid={`button-edit-task-${task.id}`}
+        >
+          <Pencil className="h-3 w-3" />
+        </Button>
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -243,159 +484,81 @@ export default function TodayPage() {
     );
   }
 
-  const { habits = [], scheduledTasks = [], inboxItems = [], assignedTasks = [] } = todayData || {};
+  const { inboxItems = [] } = todayData || {};
+  const hasAnyContent = domainGroupedContent.length > 0 || inboxItems.length > 0;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <AppHeader />
       
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-6 py-6 space-y-8">
+        <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
           <div className="flex items-center">
             <h1 className="text-2xl font-semibold">
               {format(new Date(), "EEEE, MMMM d")}
             </h1>
           </div>
 
-          {habits.length > 0 && (
-            <section>
-              <h2 className="text-lg font-medium mb-4 flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-muted-foreground" />
-                Daily Habits
-              </h2>
-              <div className="space-y-4">
-                {habits.filter(h => h.isActive).map(habit => {
-                  const options = habit.options || [];
-                  const selectedIds = habit.todayEntry?.selectedOptionIds || [];
-                  const domain = domainMap[habit.domainId];
-                  
-                  return (
-                    <Card key={habit.id} data-testid={`card-habit-${habit.id}`}>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base font-medium flex items-center justify-between">
-                          <span>{habit.name}</span>
-                          {domain && (
-                            <Badge variant="outline" className="text-xs font-normal">
-                              {domain.name}
-                            </Badge>
-                          )}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex flex-wrap gap-2">
-                          {options.map(option => {
-                            const isSelected = selectedIds.includes(option.id);
-                            return (
-                              <Button
-                                key={option.id}
-                                variant={isSelected ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => handleToggleHabitOption(habit, option.id)}
-                                data-testid={`button-habit-option-${option.id}`}
-                              >
-                                {option.label}
-                              </Button>
-                            );
-                          })}
-                        </div>
-                        {habit.selectionType === "multi" && habit.minRequired && (
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Select at least {habit.minRequired}
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+          {domainGroupedContent.map(({ domain, habits, scheduledTasks, assignedTasks }) => {
+            const isCollapsed = collapsedDomains.has(domain.id);
+            const taskCount = scheduledTasks.length + assignedTasks.length;
+            const completedCount = [...scheduledTasks, ...assignedTasks].filter(t => t.status === "completed").length;
+            
+            return (
+              <section key={domain.id} data-testid={`section-domain-${domain.id}`}>
+                <Collapsible open={!isCollapsed}>
+                  <CollapsibleTrigger 
+                    className="flex items-center gap-2 w-full text-left mb-3"
+                    onClick={() => toggleDomainCollapse(domain.id)}
+                  >
+                    {isCollapsed ? 
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" /> :
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    }
+                    <h2 className="text-lg font-medium">{domain.name}</h2>
+                    {taskCount > 0 && (
+                      <Badge variant="secondary" className="ml-2">
+                        {completedCount}/{taskCount}
+                      </Badge>
+                    )}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-3">
+                    {habits.length > 0 && (
+                      <div className="space-y-2">
+                        {habits.map(renderHabit)}
+                      </div>
+                    )}
+                    
+                    {(scheduledTasks.length > 0 || assignedTasks.length > 0) && (
+                      <div className="space-y-1">
+                        {scheduledTasks.map(task => renderTask(task, "scheduled"))}
+                        {assignedTasks.map(task => renderTask(task, "assigned"))}
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              </section>
+            );
+          })}
+
+          {emptyDomains.length > 0 && domainGroupedContent.length > 0 && (
+            <div className="border-t pt-4">
+              <div className="flex flex-wrap gap-2">
+                {emptyDomains.map(domain => (
+                  <Badge 
+                    key={domain.id} 
+                    variant="outline" 
+                    className="text-muted-foreground"
+                    data-testid={`badge-empty-domain-${domain.id}`}
+                  >
+                    {domain.name}
+                  </Badge>
+                ))}
               </div>
-            </section>
+            </div>
           )}
 
-          {scheduledTasks.length > 0 && (
-            <section>
-              <h2 className="text-lg font-medium mb-4 flex items-center gap-2">
-                <CalendarDays className="h-5 w-5 text-muted-foreground" />
-                Scheduled Today
-              </h2>
-              <div className="space-y-1">
-                {scheduledTasks.map(task => {
-                  const domain = domainMap[task.domainId];
-                  return (
-                    <div
-                      key={task.id}
-                      className="flex items-center gap-3 px-3 py-2 rounded-md hover-elevate"
-                      data-testid={`row-scheduled-task-${task.id}`}
-                    >
-                      <Checkbox
-                        checked={task.status === "completed"}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            completeTaskMutation.mutate(task.id);
-                          } else {
-                            reopenTaskMutation.mutate(task.id);
-                          }
-                        }}
-                        data-testid={`checkbox-task-${task.id}`}
-                      />
-                      <span className={`flex-1 text-sm ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
-                        {task.title}
-                      </span>
-                      {getValenceIcon(task.valence)}
-                      {domain && (
-                        <Badge variant="outline" className="text-xs font-normal">
-                          {domain.name}
-                        </Badge>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
-          {assignedTasks.length > 0 && (
-            <section>
-              <h2 className="text-lg font-medium mb-4 flex items-center gap-2">
-                <Plus className="h-5 w-5 text-muted-foreground" />
-                Added to Today
-              </h2>
-              <div className="space-y-1">
-                {assignedTasks.map(task => {
-                  const domain = domainMap[task.domainId];
-                  return (
-                    <div
-                      key={task.id}
-                      className="flex items-center gap-3 px-3 py-2 rounded-md hover-elevate"
-                      data-testid={`row-assigned-task-${task.id}`}
-                    >
-                      <Checkbox
-                        checked={task.status === "completed"}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            completeTaskMutation.mutate(task.id);
-                          } else {
-                            reopenTaskMutation.mutate(task.id);
-                          }
-                        }}
-                        data-testid={`checkbox-task-${task.id}`}
-                      />
-                      <span className={`flex-1 text-sm ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
-                        {task.title}
-                      </span>
-                      {getValenceIcon(task.valence)}
-                      {domain && (
-                        <Badge variant="outline" className="text-xs font-normal">
-                          {domain.name}
-                        </Badge>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
-          <section>
+          <section className="border-t pt-6">
             <h2 className="text-lg font-medium mb-4 flex items-center gap-2">
               <InboxIcon className="h-5 w-5 text-muted-foreground" />
               Inbox
@@ -433,8 +596,37 @@ export default function TodayPage() {
                   <Card key={item.id} data-testid={`card-inbox-${item.id}`}>
                     <CardContent className="py-3 px-4">
                       <div className="flex items-center justify-between gap-4">
-                        <span className="text-sm flex-1">{item.title}</span>
+                        {editingInboxId === item.id ? (
+                          <Input
+                            value={editingInboxTitle}
+                            onChange={(e) => setEditingInboxTitle(e.target.value)}
+                            onKeyDown={handleInboxKeyDown}
+                            onBlur={saveInboxEdit}
+                            autoFocus
+                            className="flex-1"
+                            data-testid={`input-edit-inbox-${item.id}`}
+                          />
+                        ) : (
+                          <span 
+                            className="text-sm flex-1 cursor-pointer hover:text-primary"
+                            onClick={() => startEditingInbox(item)}
+                            data-testid={`text-inbox-title-${item.id}`}
+                          >
+                            {item.title}
+                          </span>
+                        )}
                         <div className="flex items-center gap-1">
+                          {editingInboxId !== item.id && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => startEditingInbox(item)}
+                              title="Edit"
+                              data-testid={`button-edit-inbox-${item.id}`}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -473,7 +665,7 @@ export default function TodayPage() {
             )}
           </section>
 
-          {scheduledTasks.length === 0 && assignedTasks.length === 0 && habits.length === 0 && inboxItems.length === 0 && (
+          {!hasAnyContent && (
             <div className="text-center py-12">
               <h3 className="text-lg font-medium mb-2">Nothing on your plate today</h3>
               <p className="text-muted-foreground mb-4">
@@ -559,6 +751,17 @@ export default function TodayPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <TaskEditDrawer
+        task={editingTask}
+        domains={domains}
+        open={!!editingTask}
+        onClose={() => setEditingTask(null)}
+        onSave={(taskId, updates) => {
+          updateTaskMutation.mutate({ taskId, updates });
+          setEditingTask(null);
+        }}
+      />
     </div>
   );
 }

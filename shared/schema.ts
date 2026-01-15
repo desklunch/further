@@ -28,7 +28,7 @@ export type SortMode = (typeof sortModeEnum)[number];
 export const valenceEnum = [-1, 0, 1] as const;
 export type Valence = (typeof valenceEnum)[number];
 
-export const inboxItemStatusEnum = ["untriaged", "triaged"] as const;
+export const inboxItemStatusEnum = ["untriaged", "converted", "dismissed"] as const;
 export type InboxItemStatus = (typeof inboxItemStatusEnum)[number];
 
 export const habitSelectionTypeEnum = ["single", "multi"] as const;
@@ -64,6 +64,7 @@ export const tasks = pgTable("tasks", {
   valence: integer("valence").$type<Valence>().default(0),
   scheduledDate: date("scheduled_date"),
   dueDate: date("due_date"),
+  sourceInboxItemId: varchar("source_inbox_item_id", { length: 36 }),
   domainSortOrder: integer("domain_sort_order").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -97,6 +98,7 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   valence: z.coerce.number().int().min(-1).max(1).default(0),
   scheduledDate: nullableString,
   dueDate: nullableString,
+  sourceInboxItemId: nullableString,
 });
 
 export type InsertTask = z.infer<typeof insertTaskSchema>;
@@ -110,6 +112,7 @@ export const updateTaskSchema = z.object({
   valence: z.coerce.number().int().min(-1).max(1).optional(),
   scheduledDate: z.union([z.string(), z.null()]).optional(),
   dueDate: z.union([z.string(), z.null()]).optional(),
+  sourceInboxItemId: z.union([z.string(), z.null()]).optional(),
 });
 
 export type UpdateTask = z.infer<typeof updateTaskSchema>;

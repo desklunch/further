@@ -37,6 +37,7 @@ This ensures documentation is never forgotten. Mark it "not applicable" if the c
 | v0.1 - Domains & Tasks Core | Complete | `docs/prds/prd-v0.1-spec.md` | `docs/prds/prd-0.1-report.md` |
 | v0.2 - Today, Habits, Inbox & Scheduling | Complete | `docs/prds/prd-v0.2.b-revised-spec.md` | `docs/prds/prd-0.2-report.md` |
 | v0.2.1 - Stability & Correctness Fixes | Complete | `docs/prds/prd-0.2.1-spec.md` | `docs/prds/prd-0.2.1-report.md` |
+| v0.3.0 - Domain-Sequential Today & Inline Grooming | Complete | `docs/prds/prd-0.3.0-spec.md` | `docs/prds/prd-0.3.0-report.md` |
 
 ### Implementation Report Directive
 **You MUST maintain an implementation report for each active PRD.** The report should:
@@ -52,19 +53,25 @@ This ensures documentation is never forgotten. Mark it "not applicable" if the c
 A personal productivity web app focused on managing tasks across life domains. Built with React, Express, and PostgreSQL database.
 
 ## Current State
-v0.2 - Today, Habits, Inbox & Scheduling implementation complete with:
-- **Today View** (/) - Landing page with daily execution focus
-  - Habits section with option selection (single/multi-select)
-  - Scheduled tasks for today
-  - Inbox triage with dialog prompts (Add to Today, Schedule, Dismiss)
-  - Tasks added to today via TaskDayAssignment
-- **Habits Management** (/habits) - Create habits with options, toggle active/inactive
-- **Tasks View** (/tasks) - Enhanced with new filters and valence display
+v0.3.0 - Domain-Sequential Today & Inline Grooming complete with:
+- **Today View** (/) - Domain-grouped layout for daily execution
+  - Each domain shows: habits → scheduled tasks → added tasks
+  - Domains sorted by sortOrder (chronological day phases)
+  - Habit satisfied UX: Options collapse with summary chips
+  - Inline task editing: Click title opens TaskEditDrawer
+  - Inline inbox title editing: Click-to-edit pattern
+  - Inbox conversion: Domain selection dialog → create task → open editor
+  - Inbox section at bottom of view
+- **Habits Management** (/habits) - Enhanced editing capabilities
+  - Edit habit name, domain, selection_type, min_required inline
+  - Rename habit options with click-to-edit
+  - Add/delete options, toggle active/inactive
+- **Tasks View** (/tasks) - Enhanced with filters and valence display
   - Filters: All (open), Open (unscheduled), Scheduled, Completed, Archived
   - Valence icons: Triangle (-1), Circle (0), Sparkles (+1)
   - Effort unknown state: ? icon when null
   - Sort by: manual, due date, scheduled, priority, effort, valence, created
-- **v0.1 Features** preserved:
+- **v0.1-v0.2 Features** preserved:
   - Domain management with 9 seed domains
   - Task CRUD with completion, archival, restoration
   - Drag-and-drop task reordering (within and across domains)
@@ -120,12 +127,12 @@ v0.2 - Today, Habits, Inbox & Scheduling implementation complete with:
 ### Task
 - id, userId, domainId, title, status (open|completed)
 - Required: priority (1-3) default 1
-- Optional: effortPoints (1-3 or null), valence (-1/0/1), scheduledDate, dueDate
+- Optional: effortPoints (1-3 or null), valence (-1/0/1), scheduledDate, dueDate, sourceInboxItemId (v0.3.0)
 - domainSortOrder, createdAt, updatedAt, completedAt, archivedAt
 - Archive is tracked via archivedAt timestamp (not status)
 
-### InboxItem (v0.2)
-- id, userId, content, status (untriaged|triaged), createdAt, triagedAt
+### InboxItem (v0.2, updated v0.3.0)
+- id, userId, content, status (untriaged|converted|dismissed), createdAt, triagedAt
 
 ### HabitDefinition (v0.2)
 - id, userId, domainId, name, selectionType (single|multi), minRequired (for multi), isActive, sortOrder, createdAt

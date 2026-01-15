@@ -14,7 +14,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { 
   Plus, 
   X, 
-  Sparkles 
+  Sparkles,
+  Pencil,
+  Check
 } from "lucide-react";
 import type { Domain, HabitDefinition, HabitOption } from "@shared/schema";
 
@@ -25,12 +27,19 @@ interface HabitWithOptions extends HabitDefinition {
 export default function HabitsPage() {
   const { toast } = useToast();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [editingHabit, setEditingHabit] = useState<HabitWithOptions | null>(null);
+  const [editingHabitId, setEditingHabitId] = useState<string | null>(null);
   const [newHabitName, setNewHabitName] = useState("");
   const [newHabitDomainId, setNewHabitDomainId] = useState("");
   const [newHabitSelectionType, setNewHabitSelectionType] = useState<"single" | "multi">("single");
   const [newHabitMinRequired, setNewHabitMinRequired] = useState(1);
   const [newOptionLabels, setNewOptionLabels] = useState<string[]>([""]);
+  
+  const [editForm, setEditForm] = useState<{
+    name: string;
+    domainId: string;
+    selectionType: "single" | "multi";
+    minRequired: number;
+  }>({ name: "", domainId: "", selectionType: "single", minRequired: 1 });
 
   const { data: domains = [] } = useQuery<Domain[]>({
     queryKey: ["/api/domains"],
@@ -75,6 +84,7 @@ export default function HabitsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
       queryClient.invalidateQueries({ queryKey: ["/api/today"] });
       toast({ title: "Habit updated" });
+      setEditingHabitId(null);
     },
     onError: () => {
       toast({ title: "Failed to update habit", variant: "destructive" });
@@ -90,6 +100,18 @@ export default function HabitsPage() {
     },
     onError: () => {
       toast({ title: "Failed to add option", variant: "destructive" });
+    },
+  });
+
+  const updateOptionMutation = useMutation({
+    mutationFn: async ({ optionId, label }: { optionId: string; label: string }) => {
+      return apiRequest("PATCH", `/api/habits/options/${optionId}`, { label });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to update option", variant: "destructive" });
     },
   });
 
@@ -155,6 +177,34 @@ export default function HabitsPage() {
       id: habit.id, 
       updates: { isActive: !habit.isActive } 
     });
+  };
+
+  const startEditingHabit = (habit: HabitWithOptions) => {
+    setEditingHabitId(habit.id);
+    setEditForm({
+      name: habit.name,
+      domainId: habit.domainId,
+      selectionType: habit.selectionType,
+      minRequired: habit.minRequired || 1,
+    });
+  };
+
+  const saveHabitEdit = () => {
+    if (!editingHabitId || !editForm.name.trim()) return;
+    
+    updateHabitMutation.mutate({
+      id: editingHabitId,
+      updates: {
+        name: editForm.name.trim(),
+        domainId: editForm.domainId,
+        selectionType: editForm.selectionType,
+        minRequired: editForm.selectionType === "multi" ? editForm.minRequired : null,
+      },
+    });
+  };
+
+  const cancelHabitEdit = () => {
+    setEditingHabitId(null);
   };
 
   const activeDomains = domains.filter(d => d.isActive);
@@ -328,23 +378,90 @@ export default function HabitsPage() {
             <div className="space-y-4">
               {habits.map(habit => {
                 const domain = domainMap[habit.domainId];
+                const isEditing = editingHabitId === habit.id;
+                
                 return (
                   <Card key={habit.id} data-testid={`card-habit-${habit.id}`}>
                     <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-base font-medium flex items-center gap-3">
-                          <span className={!habit.isActive ? "text-muted-foreground" : ""}>
-                            {habit.name}
-                          </span>
-                          {domain && (
-                            <Badge variant="outline" className="text-xs font-normal">
-                              {domain.name}
+                      <div className="flex items-center justify-between gap-4">
+                        {isEditing ? (
+                          <div className="flex-1 space-y-3">
+                            <div className="flex gap-2">
+                              <Input
+                                value={editForm.name}
+                                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                                placeholder="Habit name"
+                                data-testid={`input-edit-habit-name-${habit.id}`}
+                              />
+                              <Select value={editForm.domainId} onValueChange={(v) => setEditForm(prev => ({ ...prev, domainId: v }))}>
+                                <SelectTrigger className="w-32" data-testid={`select-edit-habit-domain-${habit.id}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {activeDomains.map(d => (
+                                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex gap-2 items-center">
+                              <Select 
+                                value={editForm.selectionType} 
+                                onValueChange={(v) => setEditForm(prev => ({ ...prev, selectionType: v as "single" | "multi" }))}
+                              >
+                                <SelectTrigger className="w-36" data-testid={`select-edit-habit-type-${habit.id}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="single">Single</SelectItem>
+                                  <SelectItem value="multi">Multi</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              {editForm.selectionType === "multi" && (
+                                <div className="flex items-center gap-1">
+                                  <Label className="text-xs whitespace-nowrap">Min:</Label>
+                                  <Input
+                                    type="number"
+                                    min={1}
+                                    value={editForm.minRequired}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, minRequired: parseInt(e.target.value) || 1 }))}
+                                    className="w-16"
+                                    data-testid={`input-edit-habit-min-${habit.id}`}
+                                  />
+                                </div>
+                              )}
+                              <Button size="sm" onClick={saveHabitEdit} data-testid={`button-save-habit-edit-${habit.id}`}>
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={cancelHabitEdit}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <CardTitle className="text-base font-medium flex items-center gap-3 flex-wrap">
+                            <span className={!habit.isActive ? "text-muted-foreground" : ""}>
+                              {habit.name}
+                            </span>
+                            {domain && (
+                              <Badge variant="outline" className="text-xs font-normal">
+                                {domain.name}
+                              </Badge>
+                            )}
+                            <Badge variant="secondary" className="text-xs">
+                              {habit.selectionType === "single" ? "Pick one" : `Pick ${habit.minRequired || 1}+`}
                             </Badge>
-                          )}
-                          <Badge variant="secondary" className="text-xs">
-                            {habit.selectionType === "single" ? "Pick one" : `Pick ${habit.minRequired || 1}+`}
-                          </Badge>
-                        </CardTitle>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6"
+                              onClick={() => startEditingHabit(habit)}
+                              data-testid={`button-edit-habit-${habit.id}`}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          </CardTitle>
+                        )}
                         <Switch
                           checked={habit.isActive}
                           onCheckedChange={() => handleToggleActive(habit)}
@@ -355,20 +472,12 @@ export default function HabitsPage() {
                     <CardContent>
                       <div className="flex flex-wrap gap-2">
                         {habit.options.map(option => (
-                          <Badge 
-                            key={option.id} 
-                            variant="outline"
-                            className="flex items-center gap-1"
-                          >
-                            {option.label}
-                            <button
-                              onClick={() => deleteOptionMutation.mutate(option.id)}
-                              className="ml-1 hover:text-destructive"
-                              data-testid={`button-delete-option-${option.id}`}
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </Badge>
+                          <EditableOption
+                            key={option.id}
+                            option={option}
+                            onSave={(label) => updateOptionMutation.mutate({ optionId: option.id, label })}
+                            onDelete={() => deleteOptionMutation.mutate(option.id)}
+                          />
                         ))}
                         <AddOptionButton 
                           habitId={habit.id} 
@@ -384,6 +493,80 @@ export default function HabitsPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+function EditableOption({ 
+  option, 
+  onSave, 
+  onDelete 
+}: { 
+  option: HabitOption; 
+  onSave: (label: string) => void;
+  onDelete: () => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [label, setLabel] = useState(option.label);
+
+  const handleSave = () => {
+    if (label.trim() && label.trim() !== option.label) {
+      onSave(label.trim());
+    }
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSave();
+    } else if (e.key === "Escape") {
+      setLabel(option.label);
+      setIsEditing(false);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-1">
+        <Input
+          className="h-6 w-24 text-xs"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={handleSave}
+          autoFocus
+          data-testid={`input-edit-option-${option.id}`}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <Badge 
+      variant="outline"
+      className="flex items-center gap-1 cursor-pointer group"
+    >
+      <span 
+        onClick={() => setIsEditing(true)}
+        className="hover:text-primary"
+        data-testid={`text-option-${option.id}`}
+      >
+        {option.label}
+      </span>
+      <button
+        onClick={() => setIsEditing(true)}
+        className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
+        data-testid={`button-edit-option-${option.id}`}
+      >
+        <Pencil className="h-2.5 w-2.5" />
+      </button>
+      <button
+        onClick={onDelete}
+        className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
+        data-testid={`button-delete-option-${option.id}`}
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </Badge>
   );
 }
 
