@@ -8,6 +8,11 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ## 2026-01-15
 
+### Fix: Inbox Conversion Date Default
+- **03:00 UTC** | Fixed "Add to Today" defaulting to yesterday instead of today
+- **03:00 UTC** | Root cause: `new Date("YYYY-MM-DD")` parses as UTC, shifts to previous day in local TZ
+- **03:00 UTC** | Fix: Parse date string components and use `new Date(year, month-1, day)` for local time
+
 ### Habit Options DnD Aligned with Guidelines
 - **02:35 UTC** | Checkpoint `26b31a48` | Updated habit options DnD to align with guidelines.md
 - **02:35 UTC** | Added DragOverlay for ghost element following cursor

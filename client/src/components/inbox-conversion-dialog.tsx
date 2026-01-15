@@ -67,7 +67,9 @@ export function InboxConversionDialog({
     if (inboxItem && open) {
       setTitle(inboxItem.title);
       if (mode === "add") {
-        setScheduledDate(new Date(todayDate));
+        // Parse date as local time (not UTC) by splitting the string
+        const [year, month, day] = todayDate.split("-").map(Number);
+        setScheduledDate(new Date(year, month - 1, day));
       }
     }
   }, [inboxItem, open, mode, todayDate]);
