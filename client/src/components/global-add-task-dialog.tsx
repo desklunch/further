@@ -121,9 +121,9 @@ export function GlobalAddTaskDialog({
             </Select>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Priority</Label>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Label className="text-xs w-16">Priority</Label>
               <ToggleGroup
                 type="single"
                 value={priority}
@@ -137,8 +137,8 @@ export function GlobalAddTaskDialog({
               </ToggleGroup>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs">Effort</Label>
+            <div className="flex items-center gap-3">
+              <Label className="text-xs w-16">Effort</Label>
               <ToggleGroup
                 type="single"
                 value={effortPoints === null ? "unknown" : effortPoints}
@@ -153,8 +153,8 @@ export function GlobalAddTaskDialog({
               </ToggleGroup>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs">Valence</Label>
+            <div className="flex items-center gap-3">
+              <Label className="text-xs w-16">Valence</Label>
               <ToggleGroup
                 type="single"
                 value={valence}

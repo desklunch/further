@@ -22,7 +22,8 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
-  MoreHorizontal
+  MoreHorizontal,
+  Trash2
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -230,6 +231,20 @@ export default function TodayPage() {
     },
     onError: () => {
       toast({ title: "Failed to remove task", variant: "destructive" });
+    },
+  });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      return apiRequest("DELETE", `/api/tasks/${taskId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      toast({ title: "Task deleted" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete task", variant: "destructive" });
     },
   });
 
@@ -553,6 +568,16 @@ export default function TodayPage() {
                 <X className="h-4 w-4" />
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-destructive hover:text-destructive"
+              onClick={() => deleteTaskMutation.mutate(task.id)}
+              title="Delete task"
+              data-testid={`button-delete-task-${task.id}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         )}
       </div>
@@ -599,10 +624,10 @@ export default function TodayPage() {
             const completedCount = allTasks.filter(t => t.status === "completed").length;
             
             return (
-              <section key={domain.id} data-testid={`section-domain-${domain.id}`}>
+              <section key={domain.id} className="rounded-lg border p-4" data-testid={`section-domain-${domain.id}`}>
                 <Collapsible open={!isCollapsed}>
                   <CollapsibleTrigger 
-                    className="flex items-center gap-2 w-full text-left mb-3"
+                    className="flex items-center gap-2 w-full text-left"
                     onClick={() => toggleDomainCollapse(domain.id)}
                   >
                     {isCollapsed ? 
@@ -616,7 +641,7 @@ export default function TodayPage() {
                       </Badge>
                     )}
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-3">
+                  <CollapsibleContent className="space-y-3 mt-3">
                     {habits.length > 0 && (
                       <div className="space-y-2">
                         {habits.map(renderHabit)}
@@ -636,20 +661,33 @@ export default function TodayPage() {
             );
           })}
 
-          {emptyDomains.length > 0 && domainGroupedContent.length > 0 && (
-            <div className="border-t pt-4">
-              <div className="flex flex-wrap gap-2">
-                {emptyDomains.map(domain => (
-                  <Badge 
-                    key={domain.id} 
-                    variant="outline" 
-                    className="text-muted-foreground"
-                    data-testid={`badge-empty-domain-${domain.id}`}
-                  >
-                    {domain.name}
-                  </Badge>
-                ))}
-              </div>
+          {emptyDomains.length > 0 && (
+            <div className="space-y-4">
+              {emptyDomains.map(domain => {
+                const isCollapsed = collapsedDomains.has(domain.id);
+                return (
+                  <section key={domain.id} className="rounded-lg border p-4" data-testid={`section-empty-domain-${domain.id}`}>
+                    <Collapsible open={!isCollapsed}>
+                      <CollapsibleTrigger 
+                        className="flex items-center gap-2 w-full text-left"
+                        onClick={() => toggleDomainCollapse(domain.id)}
+                      >
+                        {isCollapsed ? 
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" /> :
+                          <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                        }
+                        <h2 className="text-lg font-medium text-muted-foreground">{domain.name}</h2>
+                        <Badge variant="secondary" className="ml-2">0</Badge>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-3">
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          No tasks for today
+                        </p>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </section>
+                );
+              })}
             </div>
           )}
 

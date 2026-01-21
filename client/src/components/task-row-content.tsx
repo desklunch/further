@@ -32,6 +32,12 @@ interface DragHandleProps {
   listeners?: object;
 }
 
+interface TaskAssignmentInfo {
+  date: string;
+  isToday: boolean;
+  isYesterday: boolean;
+}
+
 interface TaskRowContentProps {
   task: Task;
   isHovered: boolean;
@@ -44,6 +50,7 @@ interface TaskRowContentProps {
   onTitleChange?: (taskId: string, newTitle: string) => void;
   onAddToToday?: (taskId: string) => void;
   dragHandleProps?: DragHandleProps;
+  assignmentInfo?: TaskAssignmentInfo;
 }
 
 export function TaskRowContent({
@@ -58,6 +65,7 @@ export function TaskRowContent({
   onTitleChange,
   onAddToToday,
   dragHandleProps,
+  assignmentInfo,
 }: TaskRowContentProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editValue, setEditValue] = useState(task.title);
@@ -221,10 +229,12 @@ export function TaskRowContent({
               P{task.priority}
             </Badge>
           )}
-          <Badge variant="secondary" className="gap-1 text-xs">
-            <BarChart3 className="h-3 w-3" />
-            {task.effortPoints != null ? `${task.effortPoints}pt` : <HelpCircle className="h-3 w-3" />}
-          </Badge>
+          {task.effortPoints != null && (
+            <Badge variant="secondary" className="gap-1 text-xs">
+              <BarChart3 className="h-3 w-3" />
+              {task.effortPoints}pt
+            </Badge>
+          )}
           <Badge variant="secondary" className="gap-1 text-xs">
             {task.valence === -1 && <Triangle className="h-3 w-3" />}
             {task.valence === 0 && <Circle className="h-3 w-3" />}
@@ -243,6 +253,16 @@ export function TaskRowContent({
               {formatDate(task.scheduledDate)}
             </Badge>
           )}
+          {assignmentInfo?.isToday && (
+            <Badge variant="default" className="gap-1 text-xs">
+              Today
+            </Badge>
+          )}
+          {assignmentInfo?.isYesterday && (
+            <Badge variant="secondary" className="gap-1 text-xs">
+              Yesterday
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -250,7 +270,7 @@ export function TaskRowContent({
         className="flex items-center gap-1 transition-opacity"
         style={{ visibility: isHovered ? "visible" : "hidden" }}
       >
-        {onAddToToday && !isCompleted && !isArchived && task.scheduledDate !== format(new Date(), "yyyy-MM-dd") && (
+        {onAddToToday && !isCompleted && !isArchived && !assignmentInfo && task.scheduledDate !== format(new Date(), "yyyy-MM-dd") && (
           <Button
             variant="ghost"
             size="icon"

@@ -68,6 +68,7 @@ export interface IStorage {
   reopenTask(id: string): Promise<Task | undefined>;
   archiveTask(id: string): Promise<Task | undefined>;
   restoreTask(id: string): Promise<Task | undefined>;
+  deleteTask(id: string): Promise<boolean>;
   reorderTasks(domainId: string, orderedIds: string[]): Promise<void>;
   moveTask(taskId: string, newDomainId: string, newIndex: number): Promise<Task | undefined>;
   
@@ -506,6 +507,20 @@ export class DatabaseStorage implements IStorage {
       .where(eq(tasks.id, id))
       .returning();
     return restored;
+  }
+
+  async deleteTask(id: string): Promise<boolean> {
+    // First delete any associated task-day-assignments
+    await db
+      .delete(taskDayAssignments)
+      .where(eq(taskDayAssignments.taskId, id));
+    
+    // Then delete the task
+    const result = await db
+      .delete(tasks)
+      .where(eq(tasks.id, id))
+      .returning();
+    return result.length > 0;
   }
 
   async reorderTasks(domainId: string, orderedIds: string[]): Promise<void> {

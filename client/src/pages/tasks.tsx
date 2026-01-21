@@ -13,7 +13,7 @@ import { InlineTaskForm } from "@/components/inline-task-form";
 import { TaskEditDrawer } from "@/components/task-edit-drawer";
 import { GlobalAddTaskDialog } from "@/components/global-add-task-dialog";
 import { TasksLoadingSkeleton } from "@/components/loading-skeleton";
-import type { Domain, Task, FilterMode, SortMode, InsertTask, UpdateTask } from "@shared/schema";
+import type { Domain, Task, FilterMode, SortMode, InsertTask, UpdateTask, TaskDayAssignment } from "@shared/schema";
 
 export default function TasksPage() {
   const { toast } = useToast();
@@ -38,6 +38,32 @@ export default function TasksPage() {
       return res.json();
     },
   });
+
+  const { data: assignments = [] } = useQuery<TaskDayAssignment[]>({
+    queryKey: ["/api/task-day-assignments"],
+    queryFn: async () => {
+      const res = await fetch("/api/task-day-assignments", {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch assignments");
+      return res.json();
+    },
+  });
+
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const yesterdayStr = format(new Date(Date.now() - 86400000), "yyyy-MM-dd");
+
+  const taskAssignmentMap = useMemo(() => {
+    const map: Record<string, { date: string; isToday: boolean; isYesterday: boolean }> = {};
+    assignments.forEach(a => {
+      map[a.taskId] = {
+        date: a.date,
+        isToday: a.date === todayStr,
+        isYesterday: a.date === yesterdayStr,
+      };
+    });
+    return map;
+  }, [assignments, todayStr, yesterdayStr]);
 
   const createTaskMutation = useMutation({
     mutationFn: async (task: Omit<InsertTask, "userId">) => {
@@ -336,6 +362,7 @@ export default function TasksPage() {
                           dropTarget?.domainId === domain.id ? dropTarget.index : null
                         }
                         isDragActive={isDragActive}
+                        taskAssignmentMap={taskAssignmentMap}
                       />
                     )}
                   </div>
@@ -361,6 +388,7 @@ export default function TasksPage() {
         onSave={handleUpdateTask}
         onRestore={filter === "archived" ? (id) => restoreTaskMutation.mutate(id) : undefined}
         onAddToToday={(id) => addToTodayMutation.mutate(id)}
+        hasAssignment={editingTask ? !!taskAssignmentMap[editingTask.id] : false}
       />
 
       <GlobalAddTaskDialog

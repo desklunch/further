@@ -219,6 +219,19 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/tasks/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteTask(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete task" });
+    }
+  });
+
   app.post("/api/domains/:domainId/tasks/reorder", async (req, res) => {
     try {
       const { domainId } = req.params;

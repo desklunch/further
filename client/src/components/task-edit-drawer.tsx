@@ -35,6 +35,7 @@ interface TaskEditDrawerProps {
   onSave: (taskId: string, updates: UpdateTask) => void;
   onRestore?: (taskId: string) => void;
   onAddToToday?: (taskId: string) => void;
+  hasAssignment?: boolean;
 }
 
 export function TaskEditDrawer({
@@ -45,6 +46,7 @@ export function TaskEditDrawer({
   onSave,
   onRestore,
   onAddToToday,
+  hasAssignment,
 }: TaskEditDrawerProps) {
   const [title, setTitle] = useState("");
   const [domainId, setDomainId] = useState("");
@@ -118,9 +120,9 @@ export function TaskEditDrawer({
             </Select>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Priority</Label>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Label className="text-xs w-16">Priority</Label>
               <ToggleGroup
                 type="single"
                 value={priority}
@@ -134,8 +136,8 @@ export function TaskEditDrawer({
               </ToggleGroup>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs">Effort</Label>
+            <div className="flex items-center gap-3">
+              <Label className="text-xs w-16">Effort</Label>
               <ToggleGroup
                 type="single"
                 value={effortPoints === null ? "unknown" : effortPoints}
@@ -150,8 +152,8 @@ export function TaskEditDrawer({
               </ToggleGroup>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs">Valence</Label>
+            <div className="flex items-center gap-3">
+              <Label className="text-xs w-16">Valence</Label>
               <ToggleGroup
                 type="single"
                 value={valence}
@@ -261,7 +263,7 @@ export function TaskEditDrawer({
                 Restore
               </Button>
             )}
-            {task && onAddToToday && task.status !== "completed" && !task.archivedAt && task.scheduledDate !== format(new Date(), "yyyy-MM-dd") && (
+            {task && onAddToToday && task.status !== "completed" && !task.archivedAt && !hasAssignment && task.scheduledDate !== format(new Date(), "yyyy-MM-dd") && (
               <Button
                 type="button"
                 variant="outline"

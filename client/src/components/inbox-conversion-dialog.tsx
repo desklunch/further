@@ -66,13 +66,10 @@ export function InboxConversionDialog({
   useEffect(() => {
     if (inboxItem && open) {
       setTitle(inboxItem.title);
-      if (mode === "add") {
-        // Parse date as local time (not UTC) by splitting the string
-        const [year, month, day] = todayDate.split("-").map(Number);
-        setScheduledDate(new Date(year, month - 1, day));
-      }
+      // Don't pre-assign scheduledDate for "add to today" mode - task will be added via assignment
+      setScheduledDate(undefined);
     }
-  }, [inboxItem, open, mode, todayDate]);
+  }, [inboxItem, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,9 +146,9 @@ export function InboxConversionDialog({
             </Select>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Priority</Label>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Label className="text-xs w-16">Priority</Label>
               <ToggleGroup
                 type="single"
                 value={priority}
@@ -165,8 +162,8 @@ export function InboxConversionDialog({
               </ToggleGroup>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs">Effort</Label>
+            <div className="flex items-center gap-3">
+              <Label className="text-xs w-16">Effort</Label>
               <ToggleGroup
                 type="single"
                 value={effortPoints === null ? "unknown" : effortPoints}
@@ -181,8 +178,8 @@ export function InboxConversionDialog({
               </ToggleGroup>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs">Valence</Label>
+            <div className="flex items-center gap-3">
+              <Label className="text-xs w-16">Valence</Label>
               <ToggleGroup
                 type="single"
                 value={valence}

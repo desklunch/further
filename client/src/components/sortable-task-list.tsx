@@ -14,6 +14,12 @@ export interface TaskDragData {
   domainId: string;
 }
 
+interface TaskAssignmentInfo {
+  date: string;
+  isToday: boolean;
+  isYesterday: boolean;
+}
+
 interface SortableTaskListProps {
   domainId: string;
   tasks: Task[];
@@ -28,6 +34,7 @@ interface SortableTaskListProps {
   isBeingTargeted?: boolean;
   dropTargetIndex?: number | null;
   isDragActive?: boolean;
+  taskAssignmentMap?: Record<string, TaskAssignmentInfo>;
 }
 
 function DropIndicator() {
@@ -65,6 +72,7 @@ interface SortableTaskItemProps {
   onEdit: (task: Task) => void;
   onTitleChange?: (taskId: string, newTitle: string) => void;
   onAddToToday?: (taskId: string) => void;
+  assignmentInfo?: TaskAssignmentInfo;
 }
 
 export function SortableTaskItem({
@@ -78,6 +86,7 @@ export function SortableTaskItem({
   onEdit,
   onTitleChange,
   onAddToToday,
+  assignmentInfo,
 }: SortableTaskItemProps) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -120,6 +129,7 @@ export function SortableTaskItem({
         onTitleChange={onTitleChange}
         onAddToToday={onAddToToday}
         dragHandleProps={{ attributes, listeners }}
+        assignmentInfo={assignmentInfo}
       />
     </div>
   );
@@ -139,6 +149,7 @@ export function SortableTaskList({
   isBeingTargeted = false,
   dropTargetIndex = null,
   isDragActive = false,
+  taskAssignmentMap = {},
 }: SortableTaskListProps) {
   const taskIds = tasks.map((t) => t.id);
 
@@ -182,6 +193,7 @@ export function SortableTaskList({
                   onEdit={onEdit}
                   onTitleChange={onTitleChange}
                   onAddToToday={onAddToToday}
+                  assignmentInfo={taskAssignmentMap[task.id]}
                 />
               </div>
             ))}
