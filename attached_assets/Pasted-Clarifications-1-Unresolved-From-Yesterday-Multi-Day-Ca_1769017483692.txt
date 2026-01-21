@@ -1,0 +1,176 @@
+Clarifications
+1) Unresolved From Yesterday — Multi-Day Carryover
+
+Decision: Unresolved visibility is chained. Tasks do not disappear after one day.
+
+Canonical rule
+
+A task is Unresolved (carryover) if it was visible on any prior day and remains open, until one of these happens:
+
+it is completed
+
+it is explicitly rescheduled to a future date
+
+it is explicitly removed/dismissed from carryover (see §3 below)
+
+“From yesterday” label
+
+Even though visibility is chained, the label should reflect recency:
+
+If last visible date = yesterday → label From yesterday
+
+If last visible date < yesterday → label From <DayName> or consider neutral Carryover
+Recommendation: keep it simple:
+
+From yesterday if 1 day
+
+From earlier if 2+ days
+
+No need to show exact dates in v0.3.1 unless you want it.
+
+Implementation note
+
+This requires determining the “last visible date” for an open task:
+
+last day it had a task_day_assignment, OR
+
+last day it had scheduled_date == that day (i.e., scheduled in the past)
+
+Which leads into Concern B below.
+
+2) Add to Today — UI Location
+
+Decision: Provide Add to Today in both places, but the row action is primary.
+
+Required
+
+Inline action on each task row in Tasks view (fast path)
+
+Optional but recommended
+
+Also in TaskEditDrawer (for discoverability and parity)
+
+Engineering guidance:
+
+If you implement only one, implement the row action. It’s the workflow that matters.
+
+3) Remove from Today — Unresolved tasks
+
+Decision: You cannot “remove” unresolved carryover by deleting yesterday’s assignment. That would be incorrect history and confusing.
+
+Instead we define two distinct actions:
+
+A) Remove from Today (unassign)
+
+Only applies to tasks visible today because of a Today assignment:
+
+Delete task_day_assignment(task_id, today)
+
+Task may still remain visible if it qualifies as carryover (see below) or is scheduled today.
+
+B) Dismiss carryover (new action, passive)
+
+For tasks appearing as carryover (from prior days), provide an action:
+
+Dismiss carryover (or “Not today”)
+
+This should stop the task from appearing as unresolved carryover until re-added or rescheduled.
+
+This does not complete or archive the task; it just removes it from the carryover surface.
+
+Data model impact
+
+To support dismissal without deleting history, you need a lightweight record. Two options:
+
+Add a field on Task (simplest):
+
+carryover_dismissed_until (date) or carryover_dismissed_at
+Then carryover logic ignores tasks where dismissed_until >= today.
+
+New table (cleaner, but heavier):
+
+task_carryover_dismissals(task_id, dismissed_on_date)
+A single row per task indicating last dismissal.
+
+Recommendation for v0.3.1: Option 1 (single nullable date field on Task). It’s minimal and avoids a new table.
+
+Why this is necessary
+
+Otherwise “Unresolved tasks remain visible until completed or rescheduled” conflicts with the user’s need to intentionally say:
+
+“Yes, I meant to do this, but not today.”
+
+This keeps accountability while preserving agency.
+
+4) Retroactive Completion — UI Pattern
+
+Decision: Only offer “completed as of yesterday” in the carryover context, and make it one extra click at most.
+
+When shown
+
+Only show the backdate option for tasks that are in the carryover bucket (unresolved).
+
+UX pattern (recommended)
+
+Default click on checkbox: completes today
+
+Secondary action: small dropdown/caret next to checkbox OR a hover/action menu:
+
+“Mark complete (yesterday)”
+
+Avoid dialogs. Avoid toasts that ask questions. Keep it literal.
+
+Data behavior
+
+Backdating sets completed_at to a timestamp on yesterday’s date.
+
+Task becomes completed globally as usual.
+
+No other fields changed.
+
+5) “From yesterday” label placement
+
+Decision: Put it on each task row, not as a subsection header.
+
+Reason:
+
+tasks in the same domain may have different “from” recency
+
+row label supports scanning without expanding mental state
+
+Optional: a subtle domain-level summary line if there are many carryover items:
+
+“Carryover: 3” (no action)
+
+Addressing the Engineering Concerns
+A) Chained Unresolved Visibility
+
+Resolved: carryover is chained until resolved or dismissed. This aligns with Rule 7.1 and avoids 48+ hour invisibility.
+
+B) Scheduled for yesterday that remains open
+
+Decision: Yes—treat past scheduled_date exactly like an assignment for visibility purposes.
+
+In other words:
+
+A task with scheduled_date < today and still open is eligible for carryover.
+
+It should appear as carryover until completed, rescheduled, or dismissed.
+
+Additionally, you should strongly consider hygiene UX later (not v0.3.1):
+
+stale scheduled dates should be surfaced in Tasks view
+
+But for v0.3.1, carryover visibility is enough.
+
+C) Idempotency of Add to Today
+
+Decision: Idempotent means silently succeed (no error) if already assigned.
+
+UI feedback:
+
+Prefer disabling the button / showing “On Today” state rather than a toast.
+
+If action is invoked anyway, the API should return 200 OK with unchanged state.
+
+This prevents noisy feedback loops for a high-frequency action.
