@@ -35,7 +35,7 @@ interface TaskEditDrawerProps {
   onSave: (taskId: string, updates: UpdateTask) => void;
   onRestore?: (taskId: string) => void;
   onAddToToday?: (taskId: string) => void;
-  hasAssignment?: boolean;
+  hasTodayAssignment?: boolean;
 }
 
 export function TaskEditDrawer({
@@ -46,7 +46,7 @@ export function TaskEditDrawer({
   onSave,
   onRestore,
   onAddToToday,
-  hasAssignment,
+  hasTodayAssignment,
 }: TaskEditDrawerProps) {
   const [title, setTitle] = useState("");
   const [domainId, setDomainId] = useState("");
@@ -263,7 +263,7 @@ export function TaskEditDrawer({
                 Restore
               </Button>
             )}
-            {task && onAddToToday && task.status !== "completed" && !task.archivedAt && !hasAssignment && task.scheduledDate !== format(new Date(), "yyyy-MM-dd") && (
+            {task && onAddToToday && task.status !== "completed" && !task.archivedAt && !hasTodayAssignment && task.scheduledDate !== format(new Date(), "yyyy-MM-dd") && (
               <Button
                 type="button"
                 variant="outline"

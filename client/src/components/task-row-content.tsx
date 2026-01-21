@@ -270,7 +270,7 @@ export function TaskRowContent({
         className="flex items-center gap-1 transition-opacity"
         style={{ visibility: isHovered ? "visible" : "hidden" }}
       >
-        {onAddToToday && !isCompleted && !isArchived && !assignmentInfo && task.scheduledDate !== format(new Date(), "yyyy-MM-dd") && (
+        {onAddToToday && !isCompleted && !isArchived && !assignmentInfo?.isToday && task.scheduledDate !== format(new Date(), "yyyy-MM-dd") && (
           <Button
             variant="ghost"
             size="icon"

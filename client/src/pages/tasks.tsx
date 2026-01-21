@@ -56,11 +56,21 @@ export default function TasksPage() {
   const taskAssignmentMap = useMemo(() => {
     const map: Record<string, { date: string; isToday: boolean; isYesterday: boolean }> = {};
     assignments.forEach(a => {
-      map[a.taskId] = {
-        date: a.date,
-        isToday: a.date === todayStr,
-        isYesterday: a.date === yesterdayStr,
-      };
+      const existing = map[a.taskId];
+      const aIsToday = a.date === todayStr;
+      const aIsYesterday = a.date === yesterdayStr;
+      
+      if (!existing) {
+        map[a.taskId] = { date: a.date, isToday: aIsToday, isYesterday: aIsYesterday };
+      } else {
+        if (aIsToday) {
+          map[a.taskId] = { date: a.date, isToday: true, isYesterday: false };
+        } else if (aIsYesterday && !existing.isToday) {
+          map[a.taskId] = { date: a.date, isToday: false, isYesterday: true };
+        } else if (!existing.isToday && !existing.isYesterday && a.date > existing.date) {
+          map[a.taskId] = { date: a.date, isToday: false, isYesterday: false };
+        }
+      }
     });
     return map;
   }, [assignments, todayStr, yesterdayStr]);
@@ -388,7 +398,7 @@ export default function TasksPage() {
         onSave={handleUpdateTask}
         onRestore={filter === "archived" ? (id) => restoreTaskMutation.mutate(id) : undefined}
         onAddToToday={(id) => addToTodayMutation.mutate(id)}
-        hasAssignment={editingTask ? !!taskAssignmentMap[editingTask.id] : false}
+        hasTodayAssignment={editingTask ? taskAssignmentMap[editingTask.id]?.isToday : false}
       />
 
       <GlobalAddTaskDialog

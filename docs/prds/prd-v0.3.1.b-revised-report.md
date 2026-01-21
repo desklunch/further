@@ -97,6 +97,28 @@ None. Implementation follows PRD v0.3.1.b-revised-spec.md exactly.
 3. **No batch operations:** Each carryover task handled individually
 4. **No undo for dismiss:** Dismissing carryover cannot be reversed (by design)
 
+## Additional UX Refinements (Post-PRD)
+
+### Implemented on 2026-01-21
+
+| Refinement | Description | Files Modified |
+|------------|-------------|----------------|
+| Inbox dialog null scheduledDate | Add-to-Today from inbox no longer pre-assigns scheduledDate | `inbox-conversion-dialog.tsx` |
+| Delete task in Today view | Trash button appears on hover for assigned tasks | `today.tsx`, `routes.ts`, `storage.ts` |
+| Empty domains as containers | Empty domains render as collapsible sections, not chips | `today.tsx` |
+| Rounded domain borders | All domain sections have rounded borders for visual separation | `today.tsx` |
+| Null effort hidden | Effort badge not shown when effort_points is null | `task-row-content.tsx` |
+| Form field layout | Priority/effort/valence on separate rows in all dialogs | `inbox-conversion-dialog.tsx`, `task-edit-drawer.tsx`, `global-add-task-dialog.tsx` |
+| Assignment-aware Add-to-Today | Button hidden in Tasks view if task already has today's assignment | `tasks.tsx`, `task-row-content.tsx`, `sortable-task-list.tsx`, `task-edit-drawer.tsx` |
+| Today/Yesterday badges | Tasks view shows assignment date badges | `task-row-content.tsx` |
+
+### Technical Details
+
+1. **Task Deletion**: Added `DELETE /api/tasks/:id` endpoint that also removes associated task-day-assignments
+2. **Assignment Tracking in Tasks View**: Fetches `/api/task-day-assignments` to build `taskAssignmentMap` with isToday/isYesterday flags, preferring today > yesterday > most recent
+3. **TaskRowContent assignmentInfo prop**: New prop controls Add-to-Today visibility (hidden only for isToday) and badge display
+4. **TaskEditDrawer hasTodayAssignment prop**: Controls Add-to-Today button visibility in drawer (hidden only for today assignments)
+
 ## Implementation Log
 
 ### 2026-01-21
@@ -111,3 +133,4 @@ None. Implementation follows PRD v0.3.1.b-revised-spec.md exactly.
 - Added Add-to-Today button in TaskEditDrawer
 - Updated documentation (replit.md, implementation report)
 - All features verified working through HMR and API logs
+- **Additional UX refinements:** 8 changes implemented (see table above)
