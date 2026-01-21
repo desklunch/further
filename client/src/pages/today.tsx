@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +19,7 @@ import {
   Inbox as InboxIcon, 
   X,
   Check,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
   Clock,
@@ -319,6 +320,52 @@ export default function TodayPage() {
     }
   }, [emptyDomains, hasInitializedCollapse, isLoading]);
 
+  // Track previous incomplete counts for auto-collapse on completion
+  const prevIncompleteCountsRef = useRef<Map<string, number>>(new Map());
+  
+  // Auto-collapse domains when they become fully completed
+  useEffect(() => {
+    if (!todayData || !hasInitializedCollapse) return;
+    
+    domainGroupedContent.forEach(dc => {
+      const domainId = dc.domain.id;
+      const currentIncomplete = dc.habits.filter(h => !isHabitSatisfied(h)).length +
+        [...dc.carryoverTasks, ...dc.scheduledTasks, ...dc.assignedTasks].filter(t => t.status !== "completed").length;
+      const prevIncomplete = prevIncompleteCountsRef.current.get(domainId);
+      
+      // If domain just became fully complete (had exactly 1 incomplete item before, now has 0)
+      if (prevIncomplete === 1 && currentIncomplete === 0) {
+        setCollapsedDomains(prev => {
+          const next = new Set(prev);
+          next.add(domainId);
+          return next;
+        });
+      }
+      
+      // Update the ref with current count
+      prevIncompleteCountsRef.current.set(domainId, currentIncomplete);
+    });
+  }, [domainGroupedContent, todayData, hasInitializedCollapse]);
+
+  // Collapse fully completed domains on initial load
+  useEffect(() => {
+    if (!hasInitializedCollapse || !todayData) return;
+    
+    // On initial load after data is ready, collapse any fully completed domains
+    const completedDomainIds = domainGroupedContent
+      .filter(dc => isDomainCompleted(dc))
+      .map(dc => dc.domain.id);
+    
+    if (completedDomainIds.length > 0) {
+      setCollapsedDomains(prev => {
+        const next = new Set(prev);
+        completedDomainIds.forEach(id => next.add(id));
+        return next;
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasInitializedCollapse]);
+
   const handleAddInboxItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (newInboxItem.trim()) {
@@ -348,6 +395,32 @@ export default function TodayPage() {
     } else {
       return selectedCount >= (habit.minRequired || 1);
     }
+  };
+
+  // Calculate domain completion status
+  const isDomainCompleted = (domainContent: DomainContent): boolean => {
+    const { habits, carryoverTasks, scheduledTasks, assignedTasks } = domainContent;
+    
+    // Check if all habits are satisfied
+    const allHabitsSatisfied = habits.every(isHabitSatisfied);
+    
+    // Check if all tasks are completed
+    const allTasks = [...carryoverTasks, ...scheduledTasks, ...assignedTasks];
+    const allTasksCompleted = allTasks.length === 0 || allTasks.every(t => t.status === "completed");
+    
+    // Domain must have at least one item and all must be completed
+    const hasContent = habits.length > 0 || allTasks.length > 0;
+    
+    return hasContent && allHabitsSatisfied && allTasksCompleted;
+  };
+
+  // Count incomplete items in a domain (for auto-collapse detection)
+  const countIncompleteItems = (domainContent: DomainContent): number => {
+    const { habits, carryoverTasks, scheduledTasks, assignedTasks } = domainContent;
+    const unsatisfiedHabits = habits.filter(h => !isHabitSatisfied(h)).length;
+    const allTasks = [...carryoverTasks, ...scheduledTasks, ...assignedTasks];
+    const incompleteTasks = allTasks.filter(t => t.status !== "completed").length;
+    return unsatisfiedHabits + incompleteTasks;
   };
 
   const toggleDomainCollapse = (domainId: string) => {
@@ -630,17 +703,27 @@ export default function TodayPage() {
             </h1>
           </div>
 
-          {domainGroupedContent.map(({ domain, habits, carryoverTasks, scheduledTasks, assignedTasks }) => {
+          {domainGroupedContent.map((domainContent) => {
+            const { domain, habits, carryoverTasks, scheduledTasks, assignedTasks } = domainContent;
             const isCollapsed = collapsedDomains.has(domain.id);
             const allTasks = [...carryoverTasks, ...scheduledTasks, ...assignedTasks];
             const taskCount = allTasks.length;
             const completedCount = allTasks.filter(t => t.status === "completed").length;
+            const isComplete = isDomainCompleted(domainContent);
             
             return (
-              <section key={domain.id} className="rounded-lg border p-4" data-testid={`section-domain-${domain.id}`}>
+              <section key={domain.id} className="rounded-lg border p-4 relative" data-testid={`section-domain-${domain.id}`}>
+                {isComplete && (
+                  <div 
+                    className="absolute top-3 right-3"
+                    data-testid={`icon-domain-complete-${domain.id}`}
+                  >
+                    <CheckCircle2 className="h-6 w-6 text-green-500" />
+                  </div>
+                )}
                 <Collapsible open={!isCollapsed}>
                   <CollapsibleTrigger 
-                    className="flex items-center gap-2 w-full text-left"
+                    className="flex items-center gap-2 w-full text-left pr-8"
                     onClick={() => toggleDomainCollapse(domain.id)}
                   >
                     {isCollapsed ? 
