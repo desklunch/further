@@ -111,6 +111,8 @@ None. Implementation follows PRD v0.3.1.b-revised-spec.md exactly.
 | Form field layout | Priority/effort/valence on separate rows in all dialogs | `inbox-conversion-dialog.tsx`, `task-edit-drawer.tsx`, `global-add-task-dialog.tsx` |
 | Assignment-aware Add-to-Today | Button hidden in Tasks view if task already has today's assignment | `tasks.tsx`, `task-row-content.tsx`, `sortable-task-list.tsx`, `task-edit-drawer.tsx` |
 | Today/Yesterday badges | Tasks view shows assignment date badges | `task-row-content.tsx` |
+| Completed tasks visible | Completed tasks remain visible in Today view instead of disappearing | `storage.ts` (getTasksScheduledForDate, getTasksAssignedToDate) |
+| Empty domains collapsed by default | Empty domains (no tasks/habits) start collapsed on Today view | `today.tsx` |
 
 ### Technical Details
 
@@ -118,6 +120,29 @@ None. Implementation follows PRD v0.3.1.b-revised-spec.md exactly.
 2. **Assignment Tracking in Tasks View**: Fetches `/api/task-day-assignments` to build `taskAssignmentMap` with isToday/isYesterday flags, preferring today > yesterday > most recent
 3. **TaskRowContent assignmentInfo prop**: New prop controls Add-to-Today visibility (hidden only for isToday) and badge display
 4. **TaskEditDrawer hasTodayAssignment prop**: Controls Add-to-Today button visibility in drawer (hidden only for today assignments)
+5. **Completed Tasks Visibility**: Removed `eq(tasks.status, "open")` filter from `getTasksScheduledForDate` and `getTasksAssignedToDate` methods in storage layer. Tasks are now returned regardless of completion status, filtered only by `archivedAt IS NULL`.
+6. **Empty Domains Collapsed by Default**: Added `useEffect` hook in `today.tsx` that initializes `collapsedDomains` Set with empty domain IDs on initial page load only (guarded by `hasInitializedCollapse` flag). This prevents re-collapsing domains during the session when content changes.
+
+### Specifications for New Features
+
+#### Completed Tasks Visible (User Specification)
+> "On the Today view, I would like tasks that I mark as complete to remain visible"
+
+**Implementation:**
+- When a task is completed in Today view, it stays visible in the same domain section
+- Completed tasks have strikethrough styling and muted appearance (existing TaskRowContent behavior)
+- Domain badges show `completedCount/totalCount` format
+- Only archived tasks are hidden; completion does not remove from view
+
+#### Empty Domains Collapsed by Default (User Specification)
+> "On the Today view, empty domains should be collapsed by default"
+
+**Implementation:**
+- Empty domains (no habits, scheduled tasks, or assigned tasks) render as collapsible sections
+- On initial load, empty domains start in collapsed state
+- User can expand/collapse by clicking domain header
+- Non-empty domains start expanded as before
+- Collapse state preserved during session for user-triggered changes
 
 ## Implementation Log
 
@@ -133,6 +158,6 @@ None. Implementation follows PRD v0.3.1.b-revised-spec.md exactly.
 - Added Add-to-Today button in TaskEditDrawer
 - Updated documentation (replit.md, implementation report)
 - All features verified working through HMR and API logs
-- **Additional UX refinements:** 8 changes implemented (see table above)
+- **Additional UX refinements:** 10 changes implemented (see table above)
 - **API fix:** GET /api/task-day-assignments now works without date param (returns all assignments)
 - **Cache invalidation:** Added assignment query invalidation after Add-to-Today action

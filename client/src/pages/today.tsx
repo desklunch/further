@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -305,6 +305,19 @@ export default function TodayPage() {
     const domainIdsWithContent = new Set(domainGroupedContent.map(dc => dc.domain.id));
     return activeDomains.filter(d => !domainIdsWithContent.has(d.id));
   }, [domains, domainGroupedContent, todayData]);
+
+  // Collapse empty domains by default (only on initial load)
+  const [hasInitializedCollapse, setHasInitializedCollapse] = useState(false);
+  useEffect(() => {
+    if (!hasInitializedCollapse && emptyDomains.length > 0 && !isLoading) {
+      setCollapsedDomains(prev => {
+        const next = new Set(prev);
+        emptyDomains.forEach(d => next.add(d.id));
+        return next;
+      });
+      setHasInitializedCollapse(true);
+    }
+  }, [emptyDomains, hasInitializedCollapse, isLoading]);
 
   const handleAddInboxItem = (e: React.FormEvent) => {
     e.preventDefault();

@@ -616,7 +616,6 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(tasks.userId, userId),
           eq(tasks.scheduledDate, date),
-          eq(tasks.status, "open"),
           isNull(tasks.archivedAt)
         )
       )
@@ -638,7 +637,6 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(tasks.userId, userId),
-          eq(tasks.status, "open"),
           isNull(tasks.archivedAt)
         )
       );
