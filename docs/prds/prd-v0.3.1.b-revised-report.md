@@ -171,6 +171,28 @@ None. Implementation follows PRD v0.3.1.b-revised-spec.md exactly.
 - User can still manually expand collapsed domains
 - Reopening a task does NOT auto-expand the domain (auto-collapse is one-way on completion)
 
+#### Domain Display Order (User Specification)
+> Domains in Today view should respect sortOrder for all domains (both with content and empty)
+
+**Implementation:**
+- All domains (with content and empty) are rendered in a unified list sorted by `sortOrder`
+- Previously, empty domains were grouped separately after content domains; this violated expected order
+- `allDomainsSorted` useMemo combines `domainGroupedContent` and empty domains into one sorted list
+- Each domain rendered with correct test ID: `section-domain-${id}` or `section-empty-domain-${id}`
+
+#### Task Sorting Within Domains (User Specification)
+> "On the Today view, tasks within a domain should be sorted by scheduled_date (ascending), followed by priority (descending)"
+
+**Implementation:**
+- Generic `sortTasks<T extends Task>()` helper function preserves task subtypes (e.g., CarryoverTask)
+- **Primary sort:** `scheduledDate` ascending (earlier dates first)
+  - Tasks with scheduledDate appear before tasks without
+  - Null scheduledDate treated as "last"
+- **Secondary sort:** `priority` descending (higher priority first: 3 > 2 > 1)
+  - Null priority treated as 0
+- Applied to all task arrays: `carryoverTasks`, `scheduledTasks`, `assignedTasks`
+- Sort happens in `domainGroupedContent` useMemo before rendering
+
 ## Implementation Log
 
 ### 2026-01-21
@@ -188,3 +210,5 @@ None. Implementation follows PRD v0.3.1.b-revised-spec.md exactly.
 - **Additional UX refinements:** 12 changes implemented (see table above)
 - **API fix:** GET /api/task-day-assignments now works without date param (returns all assignments)
 - **Cache invalidation:** Added assignment query invalidation after Add-to-Today action
+- **Domain sorting fix:** All domains (content and empty) now rendered in unified list by sortOrder
+- **Task sorting:** Added `sortTasks()` helper to sort by scheduledDate (asc) then priority (desc)
