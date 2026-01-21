@@ -173,6 +173,7 @@ export default function TasksPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/task-day-assignments"] });
       toast({ title: "Added to Today" });
     },
     onError: () => {

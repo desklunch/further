@@ -672,11 +672,13 @@ export async function registerRoutes(
   app.get("/api/task-day-assignments", async (req, res) => {
     try {
       const dateParam = req.query.date as string;
-      if (!dateParam) {
-        return res.status(400).json({ error: "date query parameter is required" });
+      if (dateParam) {
+        const assignments = await storage.getTaskDayAssignmentsForDate(DEFAULT_USER_ID, dateParam);
+        res.json(assignments);
+      } else {
+        const assignments = await storage.getAllTaskDayAssignments(DEFAULT_USER_ID);
+        res.json(assignments);
       }
-      const assignments = await storage.getTaskDayAssignmentsForDate(DEFAULT_USER_ID, dateParam);
-      res.json(assignments);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch task day assignments" });
     }

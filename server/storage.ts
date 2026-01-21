@@ -99,6 +99,7 @@ export interface IStorage {
   
   getTaskDayAssignment(taskId: string, date: string): Promise<TaskDayAssignment | undefined>;
   getTaskDayAssignmentsForDate(userId: string, date: string): Promise<TaskDayAssignment[]>;
+  getAllTaskDayAssignments(userId: string): Promise<TaskDayAssignment[]>;
   getLastVisibleDateForTask(taskId: string): Promise<string | null>;
   createTaskDayAssignment(assignment: InsertTaskDayAssignment): Promise<TaskDayAssignment>;
   deleteTaskDayAssignment(taskId: string, date: string): Promise<void>;
@@ -885,6 +886,13 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(taskDayAssignments)
       .where(and(eq(taskDayAssignments.userId, userId), eq(taskDayAssignments.date, date)));
+  }
+
+  async getAllTaskDayAssignments(userId: string): Promise<TaskDayAssignment[]> {
+    return db
+      .select()
+      .from(taskDayAssignments)
+      .where(eq(taskDayAssignments.userId, userId));
   }
 
   async createTaskDayAssignment(assignment: InsertTaskDayAssignment): Promise<TaskDayAssignment> {

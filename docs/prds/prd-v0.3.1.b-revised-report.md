@@ -134,3 +134,5 @@ None. Implementation follows PRD v0.3.1.b-revised-spec.md exactly.
 - Updated documentation (replit.md, implementation report)
 - All features verified working through HMR and API logs
 - **Additional UX refinements:** 8 changes implemented (see table above)
+- **API fix:** GET /api/task-day-assignments now works without date param (returns all assignments)
+- **Cache invalidation:** Added assignment query invalidation after Add-to-Today action
