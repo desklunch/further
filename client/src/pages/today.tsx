@@ -23,8 +23,7 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
-  MoreHorizontal,
-  Trash2
+  MoreHorizontal
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -603,7 +602,7 @@ export default function TodayPage() {
             filterMode="all"
             onComplete={(taskId) => completeTaskMutation.mutate({ id: taskId })}
             onReopen={(taskId) => reopenTaskMutation.mutate(taskId)}
-            onArchive={() => {}}
+            onArchive={(taskId) => deleteTaskMutation.mutate(taskId)}
             onEdit={(t) => setEditingTask(t)}
             onTitleChange={(taskId, newTitle) => updateTaskMutation.mutate({ taskId, updates: { title: newTitle } })}
           />
@@ -658,16 +657,6 @@ export default function TodayPage() {
                 <X className="h-4 w-4" />
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-destructive hover:text-destructive"
-              onClick={() => deleteTaskMutation.mutate(task.id)}
-              title="Delete task"
-              data-testid={`button-delete-task-${task.id}`}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
           </div>
         )}
       </div>
