@@ -307,23 +307,46 @@ export default function TodayPage() {
     return activeDomains.filter(d => !domainIdsWithContent.has(d.id));
   }, [domains, domainGroupedContent, todayData]);
 
-  // Collapse empty domains by default (only on initial load)
+  // Track if we've initialized collapse states (runs once when data loads)
   const [hasInitializedCollapse, setHasInitializedCollapse] = useState(false);
+  
+  // Initialize collapse states on first data load
   useEffect(() => {
-    if (!hasInitializedCollapse && emptyDomains.length > 0 && !isLoading) {
-      setCollapsedDomains(prev => {
-        const next = new Set(prev);
-        emptyDomains.forEach(d => next.add(d.id));
-        return next;
+    if (!hasInitializedCollapse && todayData && !isLoading) {
+      // Collapse empty domains
+      const emptyDomainIds = emptyDomains.map(d => d.id);
+      
+      // Collapse fully completed domains
+      const completedDomainIds = domainGroupedContent
+        .filter(dc => isDomainCompleted(dc))
+        .map(dc => dc.domain.id);
+      
+      const domainsToCollapse = [...emptyDomainIds, ...completedDomainIds];
+      
+      if (domainsToCollapse.length > 0) {
+        setCollapsedDomains(prev => {
+          const next = new Set(prev);
+          domainsToCollapse.forEach(id => next.add(id));
+          return next;
+        });
+      }
+      
+      // Initialize incomplete counts ref for auto-collapse tracking
+      domainGroupedContent.forEach(dc => {
+        const currentIncomplete = dc.habits.filter(h => !isHabitSatisfied(h)).length +
+          [...dc.carryoverTasks, ...dc.scheduledTasks, ...dc.assignedTasks].filter(t => t.status !== "completed").length;
+        prevIncompleteCountsRef.current.set(dc.domain.id, currentIncomplete);
       });
+      
       setHasInitializedCollapse(true);
     }
-  }, [emptyDomains, hasInitializedCollapse, isLoading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayData, isLoading, hasInitializedCollapse]);
 
   // Track previous incomplete counts for auto-collapse on completion
   const prevIncompleteCountsRef = useRef<Map<string, number>>(new Map());
   
-  // Auto-collapse domains when they become fully completed
+  // Auto-collapse domains when they become fully completed (after initialization)
   useEffect(() => {
     if (!todayData || !hasInitializedCollapse) return;
     
@@ -346,25 +369,6 @@ export default function TodayPage() {
       prevIncompleteCountsRef.current.set(domainId, currentIncomplete);
     });
   }, [domainGroupedContent, todayData, hasInitializedCollapse]);
-
-  // Collapse fully completed domains on initial load
-  useEffect(() => {
-    if (!hasInitializedCollapse || !todayData) return;
-    
-    // On initial load after data is ready, collapse any fully completed domains
-    const completedDomainIds = domainGroupedContent
-      .filter(dc => isDomainCompleted(dc))
-      .map(dc => dc.domain.id);
-    
-    if (completedDomainIds.length > 0) {
-      setCollapsedDomains(prev => {
-        const next = new Set(prev);
-        completedDomainIds.forEach(id => next.add(id));
-        return next;
-      });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasInitializedCollapse]);
 
   const handleAddInboxItem = (e: React.FormEvent) => {
     e.preventDefault();

@@ -113,6 +113,8 @@ None. Implementation follows PRD v0.3.1.b-revised-spec.md exactly.
 | Today/Yesterday badges | Tasks view shows assignment date badges | `task-row-content.tsx` |
 | Completed tasks visible | Completed tasks remain visible in Today view instead of disappearing | `storage.ts` (getTasksScheduledForDate, getTasksAssignedToDate) |
 | Empty domains collapsed by default | Empty domains (no tasks/habits) start collapsed on Today view | `today.tsx` |
+| Domain completion indicator | Green checkmark in top right corner when all tasks/habits completed | `today.tsx` |
+| Auto-collapse on domain completion | Domain auto-collapses when last incomplete item is completed | `today.tsx` |
 
 ### Technical Details
 
@@ -122,6 +124,8 @@ None. Implementation follows PRD v0.3.1.b-revised-spec.md exactly.
 4. **TaskEditDrawer hasTodayAssignment prop**: Controls Add-to-Today button visibility in drawer (hidden only for today assignments)
 5. **Completed Tasks Visibility**: Removed `eq(tasks.status, "open")` filter from `getTasksScheduledForDate` and `getTasksAssignedToDate` methods in storage layer. Tasks are now returned regardless of completion status, filtered only by `archivedAt IS NULL`.
 6. **Empty Domains Collapsed by Default**: Added `useEffect` hook in `today.tsx` that initializes `collapsedDomains` Set with empty domain IDs on initial page load only (guarded by `hasInitializedCollapse` flag). This prevents re-collapsing domains during the session when content changes.
+7. **Domain Completion Indicator**: Added `isDomainCompleted(domainContent)` helper function that checks if all habits are satisfied AND all tasks are completed. When true, a green `CheckCircle2` icon is displayed in the top-right corner of the domain card using absolute positioning.
+8. **Auto-Collapse on Domain Completion**: Added `prevIncompleteCountsRef` (useRef) to track previous incomplete item counts per domain. A useEffect monitors changes: when a domain goes from 1 incomplete item to 0 (i.e., user completes the last item), the domain is automatically added to `collapsedDomains`. Additionally, fully completed domains are collapsed on initial page load.
 
 ### Specifications for New Features
 
@@ -144,6 +148,29 @@ None. Implementation follows PRD v0.3.1.b-revised-spec.md exactly.
 - Non-empty domains start expanded as before
 - Collapse state preserved during session for user-triggered changes
 
+#### Domain Completion Indicator (User Specification)
+> "On the Today view, a big green checkmark should be displayed in the top right corner of the domain card/container when all the habits and tasks in the domain are completed/satisfied"
+
+**Implementation:**
+- Green `CheckCircle2` icon (24x24px) positioned absolute top-3 right-3 in domain card
+- Only displayed when `isDomainCompleted()` returns true:
+  - All habits in domain have required selections (satisfied)
+  - All tasks in domain have status "completed"
+  - Domain has at least one habit or task (no checkmark for empty domains)
+- Icon uses `text-green-500` color class
+- Data-testid: `icon-domain-complete-${domainId}`
+
+#### Auto-Collapse on Domain Completion (User Specification)
+> "On the Today view, when all the tasks and habits in a domain have been completed/satisfied, the domain should be collapsed by default. Additionally, if there is only one task/habit that's incomplete in a domain, the domain should automatically collapse when the user completes that task/habit"
+
+**Implementation:**
+- **Initial load behavior:** Fully completed domains are collapsed on page load
+- **Dynamic behavior:** When user completes the last incomplete item (going from 1 to 0 incomplete), the domain auto-collapses
+- Uses `prevIncompleteCountsRef` (useRef<Map<string, number>>) to track previous incomplete counts
+- useEffect compares current vs previous: if prev === 1 && current === 0, collapse domain
+- User can still manually expand collapsed domains
+- Reopening a task does NOT auto-expand the domain (auto-collapse is one-way on completion)
+
 ## Implementation Log
 
 ### 2026-01-21
@@ -158,6 +185,6 @@ None. Implementation follows PRD v0.3.1.b-revised-spec.md exactly.
 - Added Add-to-Today button in TaskEditDrawer
 - Updated documentation (replit.md, implementation report)
 - All features verified working through HMR and API logs
-- **Additional UX refinements:** 10 changes implemented (see table above)
+- **Additional UX refinements:** 12 changes implemented (see table above)
 - **API fix:** GET /api/task-day-assignments now works without date param (returns all assignments)
 - **Cache invalidation:** Added assignment query invalidation after Add-to-Today action
