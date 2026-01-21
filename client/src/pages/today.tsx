@@ -283,6 +283,26 @@ export default function TodayPage() {
     }, {} as Record<string, Domain>);
   }, [domains]);
 
+  // Sort tasks by scheduledDate (ascending), then priority (descending)
+  const sortTasks = <T extends Task>(tasks: T[]): T[] => {
+    return [...tasks].sort((a, b) => {
+      // First sort by scheduledDate ascending (nulls last)
+      if (a.scheduledDate && b.scheduledDate) {
+        const dateCompare = a.scheduledDate.localeCompare(b.scheduledDate);
+        if (dateCompare !== 0) return dateCompare;
+      } else if (a.scheduledDate && !b.scheduledDate) {
+        return -1; // a has date, b doesn't - a comes first
+      } else if (!a.scheduledDate && b.scheduledDate) {
+        return 1; // b has date, a doesn't - b comes first
+      }
+      
+      // Then sort by priority descending (higher priority first, nulls last)
+      const aPriority = a.priority ?? 0;
+      const bPriority = b.priority ?? 0;
+      return bPriority - aPriority;
+    });
+  };
+
   const domainGroupedContent = useMemo((): DomainContent[] => {
     if (!todayData) return [];
     
@@ -293,9 +313,9 @@ export default function TodayPage() {
     return activeDomains.map(domain => ({
       domain,
       habits: habits.filter(h => h.domainId === domain.id && h.isActive),
-      carryoverTasks: carryoverTasks.filter(t => t.domainId === domain.id),
-      scheduledTasks: scheduledTasks.filter(t => t.domainId === domain.id),
-      assignedTasks: assignedTasks.filter(t => t.domainId === domain.id),
+      carryoverTasks: sortTasks(carryoverTasks.filter(t => t.domainId === domain.id)),
+      scheduledTasks: sortTasks(scheduledTasks.filter(t => t.domainId === domain.id)),
+      assignedTasks: sortTasks(assignedTasks.filter(t => t.domainId === domain.id)),
     })).filter(dc => dc.habits.length > 0 || dc.scheduledTasks.length > 0 || dc.assignedTasks.length > 0 || dc.carryoverTasks.length > 0);
   }, [domains, todayData]);
 
