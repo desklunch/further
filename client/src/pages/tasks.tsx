@@ -4,6 +4,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTaskDragAndDrop } from "@/hooks/use-task-drag-and-drop";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
+import { format } from "date-fns";
 import { AppHeader } from "@/components/app-header";
 import { FilterSortBar } from "@/components/filter-sort-bar";
 import { DomainHeader } from "@/components/domain-header";
@@ -125,6 +126,21 @@ export default function TasksPage() {
     },
     onError: () => {
       toast({ title: "Failed to restore task", variant: "destructive" });
+    },
+  });
+
+  const addToTodayMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+      return apiRequest("POST", "/api/task-day-assignments", { taskId, date: todayStr });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/today"] });
+      toast({ title: "Added to Today" });
+    },
+    onError: () => {
+      toast({ title: "Failed to add to Today", variant: "destructive" });
     },
   });
 
@@ -312,6 +328,7 @@ export default function TasksPage() {
                         onArchive={(id) => archiveTaskMutation.mutate(id)}
                         onEdit={setEditingTask}
                         onTitleChange={handleTitleChange}
+                        onAddToToday={(id) => addToTodayMutation.mutate(id)}
                         isBeingTargeted={
                           activeTask !== null && hoverDomainId === domain.id
                         }
@@ -343,6 +360,7 @@ export default function TasksPage() {
         onClose={() => setEditingTask(null)}
         onSave={handleUpdateTask}
         onRestore={filter === "archived" ? (id) => restoreTaskMutation.mutate(id) : undefined}
+        onAddToToday={(id) => addToTodayMutation.mutate(id)}
       />
 
       <GlobalAddTaskDialog

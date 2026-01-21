@@ -20,8 +20,16 @@ import {
   X,
   Check,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Clock,
+  MoreHorizontal
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { 
   Task, 
   Domain, 
@@ -36,12 +44,18 @@ interface HabitWithDetails extends HabitDefinition {
   todayEntry: HabitDailyEntry | null;
 }
 
+interface CarryoverTask extends Task {
+  lastVisibleDate: string;
+  carryoverLabel: string;
+}
+
 interface TodayData {
   date: string;
   habits: HabitWithDetails[];
   scheduledTasks: Task[];
   inboxItems: InboxItem[];
   assignedTasks: Task[];
+  carryoverTasks: CarryoverTask[];
 }
 
 interface ConversionDialogState {
@@ -53,6 +67,7 @@ interface ConversionDialogState {
 interface DomainContent {
   domain: Domain;
   habits: HabitWithDetails[];
+  carryoverTasks: CarryoverTask[];
   scheduledTasks: Task[];
   assignedTasks: Task[];
 }
@@ -180,8 +195,8 @@ export default function TodayPage() {
   });
 
   const completeTaskMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiRequest("POST", `/api/tasks/${id}/complete`, {});
+    mutationFn: async ({ id, completedAsOf }: { id: string; completedAsOf?: 'today' | 'yesterday' }) => {
+      return apiRequest("POST", `/api/tasks/${id}/complete`, { completed_as_of: completedAsOf });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/today"] });
@@ -189,6 +204,32 @@ export default function TodayPage() {
     },
     onError: () => {
       toast({ title: "Failed to complete task", variant: "destructive" });
+    },
+  });
+
+  const dismissCarryoverMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("POST", `/api/tasks/${id}/dismiss-carryover`, { date: todayStr });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/today"] });
+      toast({ title: "Task dismissed for today" });
+    },
+    onError: () => {
+      toast({ title: "Failed to dismiss task", variant: "destructive" });
+    },
+  });
+
+  const removeFromTodayMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      return apiRequest("DELETE", `/api/tasks/${taskId}/remove-from-today?date=${todayStr}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/today"] });
+      toast({ title: "Removed from Today" });
+    },
+    onError: () => {
+      toast({ title: "Failed to remove task", variant: "destructive" });
     },
   });
 
@@ -230,16 +271,17 @@ export default function TodayPage() {
   const domainGroupedContent = useMemo((): DomainContent[] => {
     if (!todayData) return [];
     
-    const { habits = [], scheduledTasks = [], assignedTasks = [] } = todayData;
+    const { habits = [], scheduledTasks = [], assignedTasks = [], carryoverTasks = [] } = todayData;
     
     const activeDomains = domains.filter(d => d.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
     
     return activeDomains.map(domain => ({
       domain,
       habits: habits.filter(h => h.domainId === domain.id && h.isActive),
+      carryoverTasks: carryoverTasks.filter(t => t.domainId === domain.id),
       scheduledTasks: scheduledTasks.filter(t => t.domainId === domain.id),
       assignedTasks: assignedTasks.filter(t => t.domainId === domain.id),
-    })).filter(dc => dc.habits.length > 0 || dc.scheduledTasks.length > 0 || dc.assignedTasks.length > 0);
+    })).filter(dc => dc.habits.length > 0 || dc.scheduledTasks.length > 0 || dc.assignedTasks.length > 0 || dc.carryoverTasks.length > 0);
   }, [domains, todayData]);
 
   const emptyDomains = useMemo(() => {
@@ -435,8 +477,11 @@ export default function TodayPage() {
 
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
 
-  const renderTask = (task: Task, type: "scheduled" | "assigned") => {
+  const renderTask = (task: Task | CarryoverTask, type: "scheduled" | "assigned" | "carryover") => {
     const isHovered = hoveredTaskId === task.id;
+    const isCarryover = type === "carryover";
+    const carryoverTask = isCarryover ? (task as CarryoverTask) : null;
+    
     return (
       <div
         key={task.id}
@@ -445,17 +490,71 @@ export default function TodayPage() {
         onMouseEnter={() => setHoveredTaskId(task.id)}
         onMouseLeave={() => setHoveredTaskId(null)}
       >
-        <TaskRowContent
-          task={task}
-          isHovered={isHovered}
-          showDragHandle={false}
-          filterMode="all"
-          onComplete={(taskId) => completeTaskMutation.mutate(taskId)}
-          onReopen={(taskId) => reopenTaskMutation.mutate(taskId)}
-          onArchive={() => {}}
-          onEdit={(t) => setEditingTask(t)}
-          onTitleChange={(taskId, newTitle) => updateTaskMutation.mutate({ taskId, updates: { title: newTitle } })}
-        />
+        <div className="flex-1 flex items-center gap-2">
+          <TaskRowContent
+            task={task}
+            isHovered={isHovered}
+            showDragHandle={false}
+            filterMode="all"
+            onComplete={(taskId) => completeTaskMutation.mutate({ id: taskId })}
+            onReopen={(taskId) => reopenTaskMutation.mutate(taskId)}
+            onArchive={() => {}}
+            onEdit={(t) => setEditingTask(t)}
+            onTitleChange={(taskId, newTitle) => updateTaskMutation.mutate({ taskId, updates: { title: newTitle } })}
+          />
+          {isCarryover && carryoverTask && (
+            <Badge variant="outline" className="text-xs text-muted-foreground shrink-0">
+              <Clock className="h-3 w-3 mr-1" />
+              {carryoverTask.carryoverLabel}
+            </Badge>
+          )}
+        </div>
+        {isHovered && (
+          <div className="flex items-center gap-1 shrink-0">
+            {isCarryover && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7"
+                    data-testid={`button-carryover-menu-${task.id}`}
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem 
+                    onClick={() => completeTaskMutation.mutate({ id: task.id, completedAsOf: 'yesterday' })}
+                    data-testid={`button-complete-yesterday-${task.id}`}
+                  >
+                    <Check className="h-4 w-4 mr-2" />
+                    Mark complete (yesterday)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => dismissCarryoverMutation.mutate(task.id)}
+                    data-testid={`button-dismiss-carryover-${task.id}`}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Not today
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {type === "assigned" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => removeFromTodayMutation.mutate(task.id)}
+                title="Remove from Today"
+                data-testid={`button-remove-from-today-${task.id}`}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -493,10 +592,11 @@ export default function TodayPage() {
             </h1>
           </div>
 
-          {domainGroupedContent.map(({ domain, habits, scheduledTasks, assignedTasks }) => {
+          {domainGroupedContent.map(({ domain, habits, carryoverTasks, scheduledTasks, assignedTasks }) => {
             const isCollapsed = collapsedDomains.has(domain.id);
-            const taskCount = scheduledTasks.length + assignedTasks.length;
-            const completedCount = [...scheduledTasks, ...assignedTasks].filter(t => t.status === "completed").length;
+            const allTasks = [...carryoverTasks, ...scheduledTasks, ...assignedTasks];
+            const taskCount = allTasks.length;
+            const completedCount = allTasks.filter(t => t.status === "completed").length;
             
             return (
               <section key={domain.id} data-testid={`section-domain-${domain.id}`}>
@@ -523,8 +623,9 @@ export default function TodayPage() {
                       </div>
                     )}
                     
-                    {(scheduledTasks.length > 0 || assignedTasks.length > 0) && (
+                    {(carryoverTasks.length > 0 || scheduledTasks.length > 0 || assignedTasks.length > 0) && (
                       <div className="space-y-1">
+                        {carryoverTasks.map(task => renderTask(task, "carryover"))}
                         {scheduledTasks.map(task => renderTask(task, "scheduled"))}
                         {assignedTasks.map(task => renderTask(task, "assigned"))}
                       </div>

@@ -98,8 +98,13 @@ export interface IStorage {
   
   getTaskDayAssignment(taskId: string, date: string): Promise<TaskDayAssignment | undefined>;
   getTaskDayAssignmentsForDate(userId: string, date: string): Promise<TaskDayAssignment[]>;
+  getLastVisibleDateForTask(taskId: string): Promise<string | null>;
   createTaskDayAssignment(assignment: InsertTaskDayAssignment): Promise<TaskDayAssignment>;
   deleteTaskDayAssignment(taskId: string, date: string): Promise<void>;
+  
+  getCarryoverTasks(userId: string, today: string): Promise<Array<Task & { lastVisibleDate: string; carryoverLabel: string }>>;
+  dismissCarryover(taskId: string, today: string): Promise<Task | undefined>;
+  completeTaskWithDate(taskId: string, completedAsOf: 'today' | 'yesterday'): Promise<Task | undefined>;
   
   seedDomainsIfNeeded(): Promise<void>;
 }
@@ -898,6 +903,98 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(taskDayAssignments)
       .where(and(eq(taskDayAssignments.taskId, taskId), eq(taskDayAssignments.date, date)));
+  }
+
+  async getLastVisibleDateForTask(taskId: string): Promise<string | null> {
+    const task = await this.getTask(taskId);
+    if (!task) return null;
+
+    const [latestAssignment] = await db
+      .select()
+      .from(taskDayAssignments)
+      .where(eq(taskDayAssignments.taskId, taskId))
+      .orderBy(desc(taskDayAssignments.date))
+      .limit(1);
+
+    const assignmentDate = latestAssignment?.date || null;
+    const scheduledDate = task.scheduledDate;
+
+    if (!assignmentDate && !scheduledDate) return null;
+    if (!assignmentDate) return scheduledDate;
+    if (!scheduledDate) return assignmentDate;
+
+    return assignmentDate > scheduledDate ? assignmentDate : scheduledDate;
+  }
+
+  async getCarryoverTasks(userId: string, today: string): Promise<Array<Task & { lastVisibleDate: string; carryoverLabel: string }>> {
+    const allOpenTasks = await db
+      .select()
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.userId, userId),
+          eq(tasks.status, "open"),
+          isNull(tasks.archivedAt)
+        )
+      );
+
+    const yesterday = this.getYesterdayDate(today);
+    const carryoverTasks: Array<Task & { lastVisibleDate: string; carryoverLabel: string }> = [];
+
+    for (const task of allOpenTasks) {
+      if (task.scheduledDate === today) continue;
+      if (task.carryoverDismissedUntil && task.carryoverDismissedUntil >= today) continue;
+
+      const lastVisibleDate = await this.getLastVisibleDateForTask(task.id);
+      if (!lastVisibleDate || lastVisibleDate >= today) continue;
+
+      const carryoverLabel = lastVisibleDate === yesterday ? "From yesterday" : "From earlier";
+      carryoverTasks.push({ ...task, lastVisibleDate, carryoverLabel });
+    }
+
+    return carryoverTasks;
+  }
+
+  private getYesterdayDate(today: string): string {
+    const date = new Date(today + "T00:00:00Z");
+    date.setUTCDate(date.getUTCDate() - 1);
+    return date.toISOString().split("T")[0];
+  }
+
+  async dismissCarryover(taskId: string, today: string): Promise<Task | undefined> {
+    const task = await this.getTask(taskId);
+    if (!task) return undefined;
+
+    const now = new Date();
+    const [updated] = await db
+      .update(tasks)
+      .set({ carryoverDismissedUntil: today, updatedAt: now })
+      .where(eq(tasks.id, taskId))
+      .returning();
+    return updated;
+  }
+
+  async completeTaskWithDate(taskId: string, completedAsOf: 'today' | 'yesterday'): Promise<Task | undefined> {
+    const task = await this.getTask(taskId);
+    if (!task || task.status !== "open") return undefined;
+
+    let completedAt: Date;
+    if (completedAsOf === 'yesterday') {
+      const now = new Date();
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(23, 59, 59, 999);
+      completedAt = yesterday;
+    } else {
+      completedAt = new Date();
+    }
+
+    const [completed] = await db
+      .update(tasks)
+      .set({ status: "completed", completedAt, updatedAt: new Date() })
+      .where(eq(tasks.id, taskId))
+      .returning();
+    return completed;
   }
 }
 

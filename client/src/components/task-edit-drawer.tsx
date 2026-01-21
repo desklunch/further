@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { format, parseISO } from "date-fns";
-import { CalendarIcon, X } from "lucide-react";
+import { CalendarIcon, X, CalendarPlus } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -34,6 +34,7 @@ interface TaskEditDrawerProps {
   onClose: () => void;
   onSave: (taskId: string, updates: UpdateTask) => void;
   onRestore?: (taskId: string) => void;
+  onAddToToday?: (taskId: string) => void;
 }
 
 export function TaskEditDrawer({
@@ -43,6 +44,7 @@ export function TaskEditDrawer({
   onClose,
   onSave,
   onRestore,
+  onAddToToday,
 }: TaskEditDrawerProps) {
   const [title, setTitle] = useState("");
   const [domainId, setDomainId] = useState("");
@@ -257,6 +259,20 @@ export function TaskEditDrawer({
                 data-testid="button-restore-task"
               >
                 Restore
+              </Button>
+            )}
+            {task && onAddToToday && task.status !== "completed" && !task.archivedAt && task.scheduledDate !== format(new Date(), "yyyy-MM-dd") && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  onAddToToday(task.id);
+                  onClose();
+                }}
+                data-testid="button-add-to-today-drawer"
+              >
+                <CalendarPlus className="h-4 w-4 mr-2" />
+                Add to Today
               </Button>
             )}
             <div className="flex-1" />

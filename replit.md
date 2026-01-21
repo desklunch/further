@@ -38,14 +38,18 @@ This ensures documentation is never forgotten. Mark it "not applicable" if the c
 | v0.2 - Today, Habits, Inbox & Scheduling | Complete | `docs/prds/prd-v0.2.b-revised-spec.md` | `docs/prds/prd-0.2-report.md` |
 | v0.2.1 - Stability & Correctness Fixes | Complete | `docs/prds/prd-0.2.1-spec.md` | `docs/prds/prd-0.2.1-report.md` |
 | v0.3.0 - Domain-Sequential Today & Inline Grooming | Complete | `docs/prds/prd-0.3.0-spec.md` | `docs/prds/prd-0.3.0-report.md` |
+| v0.3.1 - Carryover & Daily Working Set | Complete | `docs/prds/prd-v0.3.1.b-revised-spec.md` | `docs/prds/prd-v0.3.1.b-revised-report.md` |
 
 ### Implementation Report Directive
-**You MUST maintain an implementation report for each active PRD.** The report should:
-- Track feature implementation status with tables (Feature / Status / Notes)
-- Document architecture decisions made during implementation
-- Note any deviations from the PRD with justification
-- List known limitations and future work
-- Update the report as each phase/feature is completed
+**You MUST maintain an implementation report for each active PRD.** When implementing features from a PRD in `docs/prds/`, generate a corresponding report file:
+- **Naming convention:** Replace `-spec` with `-report` in the filename
+  - Example: `prd-v1.5-spec.md` → `prd-v1.5-report.md`
+- **Report contents:**
+  - Track feature implementation status with tables (Feature / Status / Notes)
+  - Document architecture decisions made during implementation
+  - Note any deviations from the PRD with justification
+  - List known limitations and future work
+  - Update the report as each phase/feature is completed
 
 ---
 
@@ -53,8 +57,12 @@ This ensures documentation is never forgotten. Mark it "not applicable" if the c
 A personal productivity web app focused on managing tasks across life domains. Built with React, Express, and PostgreSQL database.
 
 ## Current State
-v0.3.0 - Domain-Sequential Today & Inline Grooming complete with:
-- **Today View** (/) - Domain-grouped layout for daily execution
+v0.3.1 - Carryover & Daily Working Set complete with:
+- **Today View** (/) - Enhanced with carryover visibility and flexible controls
+  - Carryover tasks: Tasks from prior days (assignments or scheduled) surface at top with labels
+  - Row-level labels: "From yesterday" or "From earlier" for carryover context
+  - Dropdown menu: Retroactive completion (mark done on original day), dismiss until tomorrow
+  - Remove from today: Explicit row action to remove tasks from working set
   - Each domain shows: habits → scheduled tasks → added tasks
   - Domains sorted by sortOrder (chronological day phases)
   - Habit satisfied UX: Options collapse with summary chips
@@ -62,15 +70,17 @@ v0.3.0 - Domain-Sequential Today & Inline Grooming complete with:
   - Inline inbox title editing: Click-to-edit pattern
   - Inbox conversion: Domain selection dialog → create task → open editor
   - Inbox section at bottom of view
-- **Habits Management** (/habits) - Enhanced editing capabilities
-  - Edit habit name, domain, selection_type, min_required inline
-  - Rename habit options with click-to-edit
-  - Add/delete options, toggle active/inactive
-- **Tasks View** (/tasks) - Enhanced with filters and valence display
+- **Tasks View** (/tasks) - Enhanced with Add-to-Today action
+  - Row action: CalendarPlus icon to add tasks to today's working set
+  - TaskEditDrawer: "Add to Today" button for eligible tasks
   - Filters: All (open), Open (unscheduled), Scheduled, Completed, Archived
   - Valence icons: Triangle (-1), Circle (0), Sparkles (+1)
   - Effort unknown state: ? icon when null
   - Sort by: manual, due date, scheduled, priority, effort, valence, created
+- **Habits Management** (/habits) - Enhanced editing capabilities
+  - Edit habit name, domain, selection_type, min_required inline
+  - Rename habit options with click-to-edit
+  - Add/delete options, toggle active/inactive
 - **v0.1-v0.2 Features** preserved:
   - Domain management with 9 seed domains
   - Task CRUD with completion, archival, restoration
@@ -110,11 +120,16 @@ v0.3.0 - Domain-Sequential Today & Inline Grooming complete with:
   - Tasks: `GET/POST /api/tasks`, `PATCH /api/tasks/:id`, `POST /api/tasks/:id/complete|reopen|archive|restore`
   - Reorder: `POST /api/domains/:domainId/tasks/reorder`
   - **v0.2 New**:
-    - `GET /api/today` - Aggregated today data (habits, scheduled, inbox, assignments)
+    - `GET /api/today` - Aggregated today data (habits, scheduled, inbox, assignments, carryover)
     - `GET/POST /api/inbox`, `PATCH/DELETE /api/inbox/:id`, `POST /api/inbox/:id/triage`
     - `GET/POST /api/habits`, `PATCH/DELETE /api/habits/:id`
     - `POST /api/habits/:id/entry` - Record habit selection for today
     - `GET/POST /api/task-day-assignments`, `DELETE /api/task-day-assignments/:id`
+  - **v0.3.1 New**:
+    - `POST /api/tasks/:id/dismiss-carryover` - Dismiss carryover until tomorrow
+    - `POST /api/tasks/:id/complete` - Extended with `completed_as_of` body param for retroactive completion
+    - `DELETE /api/tasks/:id/remove-from-today?date=` - Remove task from today's working set
+    - Task-day-assignments POST is idempotent (onConflictDoNothing)
 
 ### Shared (shared/)
 - `schema.ts` - TypeScript types and Zod schemas for all entities
@@ -129,6 +144,7 @@ v0.3.0 - Domain-Sequential Today & Inline Grooming complete with:
 - Required: priority (1-3) default 1
 - Optional: effortPoints (1-3 or null), valence (-1/0/1), scheduledDate, dueDate, sourceInboxItemId (v0.3.0)
 - domainSortOrder, createdAt, updatedAt, completedAt, archivedAt
+- carryoverDismissedUntil (v0.3.1) - Date until which task is dismissed from carryover display
 - Archive is tracked via archivedAt timestamp (not status)
 
 ### InboxItem (v0.2, updated v0.3.0)

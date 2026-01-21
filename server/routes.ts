@@ -143,13 +143,40 @@ export async function registerRoutes(
   app.post("/api/tasks/:id/complete", async (req, res) => {
     try {
       const { id } = req.params;
-      const task = await storage.completeTask(id);
+      const { completed_as_of } = req.body;
+      
+      let task;
+      if (completed_as_of === 'yesterday') {
+        task = await storage.completeTaskWithDate(id, 'yesterday');
+      } else {
+        task = await storage.completeTask(id);
+      }
+      
       if (!task) {
         return res.status(404).json({ error: "Task not found or not open" });
       }
       res.json(task);
     } catch (error) {
       res.status(500).json({ error: "Failed to complete task" });
+    }
+  });
+
+  app.post("/api/tasks/:id/dismiss-carryover", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { date } = req.body;
+      
+      if (!date) {
+        return res.status(400).json({ error: "date is required" });
+      }
+      
+      const task = await storage.dismissCarryover(id, date);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+      res.json(task);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to dismiss carryover" });
     }
   });
 
@@ -223,11 +250,12 @@ export async function registerRoutes(
         return res.status(400).json({ error: "date query parameter is required" });
       }
       
-      const [habits, scheduledTasks, inboxItems, assignedTasks] = await Promise.all([
+      const [habits, scheduledTasks, inboxItems, assignedTasks, carryoverTasks] = await Promise.all([
         storage.getHabitDefinitions(DEFAULT_USER_ID),
         storage.getTasksScheduledForDate(DEFAULT_USER_ID, dateParam),
         storage.getInboxItems(DEFAULT_USER_ID),
         storage.getTasksAssignedToDate(DEFAULT_USER_ID, dateParam),
+        storage.getCarryoverTasks(DEFAULT_USER_ID, dateParam),
       ]);
 
       const habitIds = habits.map(h => h.id);
@@ -250,7 +278,10 @@ export async function registerRoutes(
       }
 
       const scheduledTaskIds = new Set(scheduledTasks.map(t => t.id));
-      const filteredAssignedTasks = assignedTasks.filter(t => !scheduledTaskIds.has(t.id));
+      const carryoverTaskIds = new Set(carryoverTasks.map(t => t.id));
+      const filteredAssignedTasks = assignedTasks.filter(t => 
+        !scheduledTaskIds.has(t.id) && !carryoverTaskIds.has(t.id)
+      );
 
       res.json({
         date: dateParam,
@@ -262,6 +293,7 @@ export async function registerRoutes(
         scheduledTasks,
         inboxItems,
         assignedTasks: filteredAssignedTasks,
+        carryoverTasks,
       });
     } catch (error) {
       console.error("Today endpoint error:", error);

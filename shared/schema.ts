@@ -65,6 +65,7 @@ export const tasks = pgTable("tasks", {
   scheduledDate: date("scheduled_date"),
   dueDate: date("due_date"),
   sourceInboxItemId: varchar("source_inbox_item_id", { length: 36 }),
+  carryoverDismissedUntil: date("carryover_dismissed_until"),
   domainSortOrder: integer("domain_sort_order").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -113,6 +114,7 @@ export const updateTaskSchema = z.object({
   scheduledDate: z.union([z.string(), z.null()]).optional(),
   dueDate: z.union([z.string(), z.null()]).optional(),
   sourceInboxItemId: z.union([z.string(), z.null()]).optional(),
+  carryoverDismissedUntil: z.union([z.string(), z.null()]).optional(),
 });
 
 export type UpdateTask = z.infer<typeof updateTaskSchema>;

@@ -24,6 +24,7 @@ interface SortableTaskListProps {
   onArchive: (taskId: string) => void;
   onEdit: (task: Task) => void;
   onTitleChange?: (taskId: string, newTitle: string) => void;
+  onAddToToday?: (taskId: string) => void;
   isBeingTargeted?: boolean;
   dropTargetIndex?: number | null;
   isDragActive?: boolean;
@@ -63,6 +64,7 @@ interface SortableTaskItemProps {
   onArchive: (taskId: string) => void;
   onEdit: (task: Task) => void;
   onTitleChange?: (taskId: string, newTitle: string) => void;
+  onAddToToday?: (taskId: string) => void;
 }
 
 export function SortableTaskItem({
@@ -75,6 +77,7 @@ export function SortableTaskItem({
   onArchive,
   onEdit,
   onTitleChange,
+  onAddToToday,
 }: SortableTaskItemProps) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -115,6 +118,7 @@ export function SortableTaskItem({
         onArchive={onArchive}
         onEdit={onEdit}
         onTitleChange={onTitleChange}
+        onAddToToday={onAddToToday}
         dragHandleProps={{ attributes, listeners }}
       />
     </div>
@@ -131,6 +135,7 @@ export function SortableTaskList({
   onArchive,
   onEdit,
   onTitleChange,
+  onAddToToday,
   isBeingTargeted = false,
   dropTargetIndex = null,
   isDragActive = false,
@@ -176,6 +181,7 @@ export function SortableTaskList({
                   onArchive={onArchive}
                   onEdit={onEdit}
                   onTitleChange={onTitleChange}
+                  onAddToToday={onAddToToday}
                 />
               </div>
             ))}

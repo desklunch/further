@@ -3,7 +3,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { GripVertical, Pencil, Trash2, Calendar, Zap, BarChart3, Triangle, Circle, Sparkles, Check, X, HelpCircle } from "lucide-react";
+import { GripVertical, Pencil, Trash2, Calendar, Zap, BarChart3, Triangle, Circle, Sparkles, Check, X, HelpCircle, CalendarPlus } from "lucide-react";
+import { format } from "date-fns";
 import type { Task, FilterMode } from "@shared/schema";
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -41,6 +42,7 @@ interface TaskRowContentProps {
   onArchive: (taskId: string) => void;
   onEdit: (task: Task) => void;
   onTitleChange?: (taskId: string, newTitle: string) => void;
+  onAddToToday?: (taskId: string) => void;
   dragHandleProps?: DragHandleProps;
 }
 
@@ -54,6 +56,7 @@ export function TaskRowContent({
   onArchive,
   onEdit,
   onTitleChange,
+  onAddToToday,
   dragHandleProps,
 }: TaskRowContentProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -247,6 +250,17 @@ export function TaskRowContent({
         className="flex items-center gap-1 transition-opacity"
         style={{ visibility: isHovered ? "visible" : "hidden" }}
       >
+        {onAddToToday && !isCompleted && !isArchived && task.scheduledDate !== format(new Date(), "yyyy-MM-dd") && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onAddToToday(task.id)}
+            title="Add to Today"
+            data-testid={`button-add-to-today-${task.id}`}
+          >
+            <CalendarPlus className="h-4 w-4" />
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"
