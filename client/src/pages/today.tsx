@@ -306,6 +306,18 @@ export default function TodayPage() {
     return activeDomains.filter(d => !domainIdsWithContent.has(d.id));
   }, [domains, domainGroupedContent, todayData]);
 
+  // Combine all domains (with content and empty) sorted by sortOrder
+  const allDomainsSorted = useMemo(() => {
+    const contentDomainMap = new Map(domainGroupedContent.map(dc => [dc.domain.id, dc]));
+    const activeDomains = domains.filter(d => d.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+    
+    return activeDomains.map(domain => ({
+      domain,
+      content: contentDomainMap.get(domain.id) || null,
+      isEmpty: !contentDomainMap.has(domain.id)
+    }));
+  }, [domains, domainGroupedContent]);
+
   // Track if we've initialized collapse states (runs once when data loads)
   const [hasInitializedCollapse, setHasInitializedCollapse] = useState(false);
   
@@ -696,13 +708,41 @@ export default function TodayPage() {
             </h1>
           </div>
 
-          {domainGroupedContent.map((domainContent) => {
-            const { domain, habits, carryoverTasks, scheduledTasks, assignedTasks } = domainContent;
+          {allDomainsSorted.map(({ domain, content, isEmpty }) => {
             const isCollapsed = collapsedDomains.has(domain.id);
+            
+            if (isEmpty) {
+              // Render empty domain
+              return (
+                <section key={domain.id} className="rounded-lg border p-4" data-testid={`section-empty-domain-${domain.id}`}>
+                  <Collapsible open={!isCollapsed}>
+                    <CollapsibleTrigger 
+                      className="flex items-center gap-2 w-full text-left"
+                      onClick={() => toggleDomainCollapse(domain.id)}
+                    >
+                      {isCollapsed ? 
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" /> :
+                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                      }
+                      <h2 className="text-lg font-medium text-muted-foreground">{domain.name}</h2>
+                      <Badge variant="secondary" className="ml-2">0</Badge>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-3">
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        No tasks for today
+                      </p>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </section>
+              );
+            }
+            
+            // Render domain with content
+            const { habits, carryoverTasks, scheduledTasks, assignedTasks } = content!;
             const allTasks = [...carryoverTasks, ...scheduledTasks, ...assignedTasks];
             const taskCount = allTasks.length;
             const completedCount = allTasks.filter(t => t.status === "completed").length;
-            const isComplete = isDomainCompleted(domainContent);
+            const isComplete = isDomainCompleted(content!);
             
             return (
               <section key={domain.id} className="rounded-lg border p-4 relative" data-testid={`section-domain-${domain.id}`}>
@@ -749,36 +789,6 @@ export default function TodayPage() {
               </section>
             );
           })}
-
-          {emptyDomains.length > 0 && (
-            <div className="space-y-4">
-              {emptyDomains.map(domain => {
-                const isCollapsed = collapsedDomains.has(domain.id);
-                return (
-                  <section key={domain.id} className="rounded-lg border p-4" data-testid={`section-empty-domain-${domain.id}`}>
-                    <Collapsible open={!isCollapsed}>
-                      <CollapsibleTrigger 
-                        className="flex items-center gap-2 w-full text-left"
-                        onClick={() => toggleDomainCollapse(domain.id)}
-                      >
-                        {isCollapsed ? 
-                          <ChevronRight className="h-5 w-5 text-muted-foreground" /> :
-                          <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                        }
-                        <h2 className="text-lg font-medium text-muted-foreground">{domain.name}</h2>
-                        <Badge variant="secondary" className="ml-2">0</Badge>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-3">
-                        <p className="text-sm text-muted-foreground text-center py-4">
-                          No tasks for today
-                        </p>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </section>
-                );
-              })}
-            </div>
-          )}
 
           <section className="border-t pt-6">
             <h2 className="text-lg font-medium mb-4 flex items-center gap-2">
