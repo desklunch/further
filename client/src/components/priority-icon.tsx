@@ -4,48 +4,54 @@ interface PriorityIconProps {
   "data-testid"?: string;
 }
 
-export function PriorityIcon({ level, className = "", "data-testid": testId }: PriorityIconProps) {
+export function PriorityIcon({
+  level,
+  className = "",
+  "data-testid": testId,
+}: PriorityIconProps) {
   const filledColor = "currentColor";
   const filledOpacity = 1;
   const unfilledOpacity = 0.25;
 
   return (
-    <svg
-      width="14"
-      height="12"
-      viewBox="0 0 14 12"
-      fill="none"
-      className={className}
-      aria-label={`Priority ${level}`}
-      data-testid={testId}
-    >
-      <rect
-        x="0"
-        y="0"
-        width="14"
-        height="3"
-        rx="0.5"
-        fill={filledColor}
-        opacity={level >= 3 ? filledOpacity : unfilledOpacity}
-      />
-      <rect
-        x="0"
-        y="4.5"
-        width="14"
-        height="3"
-        rx="0.5"
-        fill={filledColor}
-        opacity={level >= 2 ? filledOpacity : unfilledOpacity}
-      />
-      <rect
-        x="0"
-        y="9"
-        width="14"
-        height="3"
-        rx="0.5"
-        fill={filledColor}
-        opacity={level >= 1 ? filledOpacity : unfilledOpacity}
-      />
-    </svg>
+    <div className="whitespace-nowrap inline-flex items-center rounded-sm border px-1 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground">
+      <svg
+        width="10"
+        height="12"
+        viewBox="0 0 10 12"
+        fill="none"
+        className={className}
+        aria-label={`Priority ${level}`}
+        data-testid={testId}
+      >
+        <rect
+          x="0"
+          y="0"
+          width="10"
+          height="2.5"
+          rx="0.5"
+          fill={filledColor}
+          opacity={level >= 3 ? filledOpacity : unfilledOpacity}
+        />
+        <rect
+          x="0"
+          y="4.5"
+          width="10"
+          height="2.5"
+          rx="0.5"
+          fill={filledColor}
+          opacity={level >= 2 ? filledOpacity : unfilledOpacity}
+        />
+        <rect
+          x="0"
+          y="9"
+          width="10"
+          height="2.5"
+          rx="0.5"
+          fill={filledColor}
+          opacity={level >= 1 ? filledOpacity : unfilledOpacity}
+        />
+      </svg>
+    </div>
   );
 }

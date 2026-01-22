@@ -241,26 +241,6 @@ export function TaskRowContent({
               </span>
             );
           })()}
-          {task.priority && (
-            <PriorityIcon 
-              level={task.priority} 
-              className="h-3 w-auto" 
-              data-testid={`icon-priority-${task.id}`}
-            />
-          )}
-          {task.effortPoints != null && (
-            <EffortIcon 
-              level={task.effortPoints} 
-              className="h-3 w-auto" 
-              data-testid={`icon-effort-${task.id}`}
-            />
-          )}
-          <Badge variant="secondary" className="gap-1 text-xs">
-            {task.valence === -1 && <Triangle className="h-3 w-3" />}
-            {task.valence === 0 && <Circle className="h-3 w-3" />}
-            {task.valence === 1 && <Sparkles className="h-3 w-3" />}
-            {task.valence == null && <Circle className="h-3 w-3" />}
-          </Badge>
           {task.dueDate && (
             <Badge variant="secondary" className="gap-1 text-xs">
               <Calendar className="h-3 w-3" />
@@ -279,13 +259,35 @@ export function TaskRowContent({
             </Badge>
           )}
           {isCarryover && carryoverDate && (onDismissCarryover || onCompleteRetroactive) && (
-            <Badge variant="outline" className="gap-1 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
+            <Badge variant="outline" className="gap-1 px-2 text-xs text-muted-foreground">
+              {/* <Clock className="h-3 w-3" /> */}
               {carryoverDate === format(new Date(Date.now() - 86400000), "yyyy-MM-dd") 
-                ? "From yesterday" 
-                : "From earlier"}
+                ? "Overdue" 
+                : "Overdue"}
             </Badge>
           )}
+          {task.effortPoints != null && (
+            <EffortIcon 
+              level={task.effortPoints} 
+              className="h-3 w-auto text-chart-3" 
+              data-testid={`icon-effort-${task.id}`}
+            />
+          )}
+          {task.priority && (
+            <PriorityIcon 
+              level={task.priority} 
+              className="h-3 w-auto text-chart-4" 
+              data-testid={`icon-priority-${task.id}`}
+            />
+          )}
+          <Badge variant="secondary" className="gap-1 text-xs px-1">
+            {task.valence === -1 && <Triangle className="h-3 w-3" />}
+            {task.valence === 0 && <Circle className="h-3 w-3" />}
+            {task.valence === 1 && <Sparkles className="h-3 w-3" />}
+            {task.valence == null && <Circle className="h-3 w-3" />}
+          </Badge>
+  
+   
         </div>
       </div>
 
