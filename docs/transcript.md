@@ -8,6 +8,12 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ## 2026-01-22
 
+### Custom Priority and Effort Icons
+- **19:30 UTC** | Created PriorityIcon component - 3 horizontal stacked bars, fill from bottom by level
+- **19:30 UTC** | Created EffortIcon component - 3 ascending vertical bars (bar chart style), fill from left by level
+- **19:25 UTC** | Updated TaskRowContent to use new icons instead of Badge with text
+- **19:25 UTC** | Icons use opacity (100% filled, 25% unfilled) to indicate levels 1-3
+
 ### Consolidated Task Action Dropdown Menu
 - **19:15 UTC** | Checkpoint `4df81be5` | Consolidated all task actions into dropdown menu
 - **19:15 UTC** | TaskRowContent now contains single MoreHorizontal dropdown with all actions

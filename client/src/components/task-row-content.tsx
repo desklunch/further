@@ -10,7 +10,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { GripVertical, Pencil, Trash2, Calendar, Zap, BarChart3, Triangle, Circle, Sparkles, Check, X, HelpCircle, CalendarPlus, MoreHorizontal, RotateCcw, Clock } from "lucide-react";
+import { GripVertical, Pencil, Trash2, Calendar, Triangle, Circle, Sparkles, Check, X, HelpCircle, CalendarPlus, MoreHorizontal, RotateCcw, Clock } from "lucide-react";
+import { PriorityIcon } from "@/components/priority-icon";
+import { EffortIcon } from "@/components/effort-icon";
 import { format } from "date-fns";
 import type { Task, TaskDayAssignment, FilterMode } from "@shared/schema";
 
@@ -240,16 +242,18 @@ export function TaskRowContent({
             );
           })()}
           {task.priority && (
-            <Badge variant="secondary" className="gap-1 text-xs">
-              <Zap className="h-3 w-3" />
-              P{task.priority}
-            </Badge>
+            <PriorityIcon 
+              level={task.priority} 
+              className="h-3 w-auto" 
+              data-testid={`icon-priority-${task.id}`}
+            />
           )}
           {task.effortPoints != null && (
-            <Badge variant="secondary" className="gap-1 text-xs">
-              <BarChart3 className="h-3 w-3" />
-              {task.effortPoints}pt
-            </Badge>
+            <EffortIcon 
+              level={task.effortPoints} 
+              className="h-3 w-auto" 
+              data-testid={`icon-effort-${task.id}`}
+            />
           )}
           <Badge variant="secondary" className="gap-1 text-xs">
             {task.valence === -1 && <Triangle className="h-3 w-3" />}
