@@ -248,6 +248,7 @@ None. Implementation follows PRD v0.3.1.b-revised-spec.md exactly.
 - Created PriorityIcon component (3 horizontal bars, fills from bottom by level)
 - Created EffortIcon component (3 ascending vertical bars, fills from left by level)
 - Replaced priority/effort text badges with new SVG icons
+- **Timezone fix:** Retroactive completion now sends explicit YYYY-MM-DD date from client instead of 'yesterday' keyword
 - Updated transcript.md and implementation report
 
 ### 2026-01-21

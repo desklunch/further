@@ -188,8 +188,8 @@ export default function TodayPage() {
   });
 
   const completeTaskMutation = useMutation({
-    mutationFn: async ({ id, completedAsOf }: { id: string; completedAsOf?: 'today' | 'yesterday' }) => {
-      return apiRequest("POST", `/api/tasks/${id}/complete`, { completed_as_of: completedAsOf });
+    mutationFn: async ({ id, completedAsOf }: { id: string; completedAsOf?: string }) => {
+      return apiRequest("POST", `/api/tasks/${id}/complete`, completedAsOf ? { completed_as_of: completedAsOf } : {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/today"] });
@@ -636,7 +636,7 @@ export default function TodayPage() {
           onTitleChange={(taskId, newTitle) => updateTaskMutation.mutate({ taskId, updates: { title: newTitle } })}
           onRemoveFromToday={(taskId) => removeFromTodayMutation.mutate(taskId)}
           onDismissCarryover={(taskId) => dismissCarryoverMutation.mutate(taskId)}
-          onCompleteRetroactive={(taskId, _date) => completeTaskMutation.mutate({ id: taskId, completedAsOf: 'yesterday' })}
+          onCompleteRetroactive={(taskId, date) => completeTaskMutation.mutate({ id: taskId, completedAsOf: date })}
           assignment={assignment}
         />
       </div>

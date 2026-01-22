@@ -106,7 +106,7 @@ export interface IStorage {
   
   getCarryoverTasks(userId: string, today: string): Promise<Array<Task & { lastVisibleDate: string; carryoverLabel: string }>>;
   dismissCarryover(taskId: string, today: string): Promise<Task | undefined>;
-  completeTaskWithDate(taskId: string, completedAsOf: 'today' | 'yesterday'): Promise<Task | undefined>;
+  completeTaskWithDate(taskId: string, completedAsOfDate: string): Promise<Task | undefined>;
   
   seedDomainsIfNeeded(): Promise<void>;
 }
@@ -995,20 +995,12 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async completeTaskWithDate(taskId: string, completedAsOf: 'today' | 'yesterday'): Promise<Task | undefined> {
+  async completeTaskWithDate(taskId: string, completedAsOfDate: string): Promise<Task | undefined> {
     const task = await this.getTask(taskId);
     if (!task || task.status !== "open") return undefined;
 
-    let completedAt: Date;
-    if (completedAsOf === 'yesterday') {
-      const now = new Date();
-      const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
-      yesterday.setHours(23, 59, 59, 999);
-      completedAt = yesterday;
-    } else {
-      completedAt = new Date();
-    }
+    const [year, month, day] = completedAsOfDate.split('-').map(Number);
+    const completedAt = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
 
     const [completed] = await db
       .update(tasks)

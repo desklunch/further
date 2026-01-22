@@ -146,8 +146,8 @@ export async function registerRoutes(
       const { completed_as_of } = req.body;
       
       let task;
-      if (completed_as_of === 'yesterday') {
-        task = await storage.completeTaskWithDate(id, 'yesterday');
+      if (completed_as_of && /^\d{4}-\d{2}-\d{2}$/.test(completed_as_of)) {
+        task = await storage.completeTaskWithDate(id, completed_as_of);
       } else {
         task = await storage.completeTask(id);
       }

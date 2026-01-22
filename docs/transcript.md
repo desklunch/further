@@ -8,6 +8,12 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ## 2026-01-22
 
+### Timezone Fix for Retroactive Completion
+- **22:20 UTC** | Server uses Date.UTC for consistent timezone-safe storage
+- **22:15 UTC** | Fixed timezone issue: client now sends explicit YYYY-MM-DD date instead of 'yesterday' keyword
+- **22:15 UTC** | Server validates date format with regex before processing
+- **22:10 UTC** | Ensures retroactive completion uses user's local calendar day, not server timezone
+
 ### Custom Priority and Effort Icons
 - **19:30 UTC** | Created PriorityIcon component - 3 horizontal stacked bars, fill from bottom by level
 - **19:30 UTC** | Created EffortIcon component - 3 ascending vertical bars (bar chart style), fill from left by level
