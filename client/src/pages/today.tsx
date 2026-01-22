@@ -726,7 +726,7 @@ export default function TodayPage() {
     <div className="flex min-h-screen flex-col bg-background">
       <AppHeader />
       
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1">
         <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
           <div className="flex items-center">
             <h1 className="text-2xl font-semibold">
