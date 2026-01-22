@@ -80,11 +80,13 @@ interface CarryoverTask {
 - `server/routes.ts` - New endpoints, updated /today response
 
 ### Frontend
-- `client/src/pages/today.tsx` - Carryover section, dropdown menu, actions
+- `client/src/pages/today.tsx` - Carryover section, dropdown menu, actions, sticky headers
 - `client/src/pages/tasks.tsx` - Add-to-Today row action, mutation
-- `client/src/components/task-row-content.tsx` - Carryover labels, action icons
-- `client/src/components/sortable-task-list.tsx` - CalendarPlus action support
+- `client/src/components/task-row-content.tsx` - Carryover labels, consolidated dropdown menu, priority/effort icons
+- `client/src/components/sortable-task-list.tsx` - CalendarPlus action support, assignment prop
 - `client/src/components/task-edit-drawer.tsx` - onAddToToday prop and button
+- `client/src/components/priority-icon.tsx` - Custom SVG priority indicator (new)
+- `client/src/components/effort-icon.tsx` - Custom SVG effort indicator (new)
 
 ## Deviations from PRD
 
@@ -216,7 +218,37 @@ None. Implementation follows PRD v0.3.1.b-revised-spec.md exactly.
 - `isAssignedToday` computed by comparing `assignment.date` to today's date string
 - View-specific behavior achieved through callback availability, not explicit view flags
 
+### Custom Priority and Effort Icons (2026-01-22)
+
+| Change | Description | Files Modified |
+|--------|-------------|----------------|
+| PriorityIcon component | SVG with 3 horizontal stacked bars, fills from bottom based on level | `priority-icon.tsx` |
+| EffortIcon component | SVG with 3 ascending vertical bars (bar chart), fills from left based on level | `effort-icon.tsx` |
+| Badge replacement | Task rows use icons instead of text-based Badge components | `task-row-content.tsx` |
+
+**Visual Design:**
+- Priority: Three horizontal bars stacked vertically; level 1 fills bottom bar, level 2 fills bottom two, level 3 fills all
+- Effort: Three vertical bars of ascending height (bar chart pattern); level 1 fills first bar, level 2 fills first two, level 3 fills all
+- Filled bars use 100% opacity, unfilled bars use 25% opacity
+- Icons inherit currentColor for theme compatibility
+
+### Sticky Domain Headers (2026-01-22)
+
+| Change | Description | Files Modified |
+|--------|-------------|----------------|
+| Sticky headers | Domain headers stick to top of viewport when scrolling | `today.tsx` |
+| Consistent with Tasks view | Uses same top-0 positioning pattern as Tasks page | `today.tsx` |
+
 ## Implementation Log
+
+### 2026-01-22
+- Added sticky domain headers to Today view (matching Tasks view pattern)
+- Consolidated all task actions into single dropdown menu in TaskRowContent
+- Added assignment prop to TaskRowContent for internal carryover/today detection
+- Created PriorityIcon component (3 horizontal bars, fills from bottom by level)
+- Created EffortIcon component (3 ascending vertical bars, fills from left by level)
+- Replaced priority/effort text badges with new SVG icons
+- Updated transcript.md and implementation report
 
 ### 2026-01-21
 - Created implementation report
