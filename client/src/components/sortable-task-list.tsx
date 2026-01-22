@@ -6,7 +6,7 @@ import {
 } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
 import { TaskRowContent } from "@/components/task-row-content";
-import type { Task, FilterMode } from "@shared/schema";
+import type { Task, TaskDayAssignment, FilterMode } from "@shared/schema";
 
 export interface TaskDragData {
   type: "task";
@@ -28,6 +28,7 @@ interface SortableTaskListProps {
   onComplete: (taskId: string) => void;
   onReopen: (taskId: string) => void;
   onArchive: (taskId: string) => void;
+  onRestore?: (taskId: string) => void;
   onEdit: (task: Task) => void;
   onTitleChange?: (taskId: string, newTitle: string) => void;
   onAddToToday?: (taskId: string) => void;
@@ -69,10 +70,11 @@ interface SortableTaskItemProps {
   onComplete: (taskId: string) => void;
   onReopen: (taskId: string) => void;
   onArchive: (taskId: string) => void;
+  onRestore?: (taskId: string) => void;
   onEdit: (task: Task) => void;
   onTitleChange?: (taskId: string, newTitle: string) => void;
   onAddToToday?: (taskId: string) => void;
-  assignmentInfo?: TaskAssignmentInfo;
+  assignment?: TaskDayAssignment | null;
 }
 
 export function SortableTaskItem({
@@ -83,10 +85,11 @@ export function SortableTaskItem({
   onComplete,
   onReopen,
   onArchive,
+  onRestore,
   onEdit,
   onTitleChange,
   onAddToToday,
-  assignmentInfo,
+  assignment,
 }: SortableTaskItemProps) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -125,11 +128,12 @@ export function SortableTaskItem({
         onComplete={onComplete}
         onReopen={onReopen}
         onArchive={onArchive}
+        onRestore={onRestore}
         onEdit={onEdit}
         onTitleChange={onTitleChange}
         onAddToToday={onAddToToday}
         dragHandleProps={{ attributes, listeners }}
-        assignmentInfo={assignmentInfo}
+        assignment={assignment}
       />
     </div>
   );
@@ -143,6 +147,7 @@ export function SortableTaskList({
   onComplete,
   onReopen,
   onArchive,
+  onRestore,
   onEdit,
   onTitleChange,
   onAddToToday,
@@ -162,6 +167,18 @@ export function SortableTaskList({
   });
 
   const showHighlight = isOver || isBeingTargeted;
+  
+  const getAssignmentForTask = (task: Task): TaskDayAssignment | null => {
+    const info = taskAssignmentMap[task.id];
+    if (!info) return null;
+    return {
+      id: `temp-${task.id}`,
+      userId: "",
+      taskId: task.id,
+      date: info.date,
+      createdAt: new Date(),
+    };
+  };
 
   return (
     <div
@@ -190,10 +207,11 @@ export function SortableTaskList({
                   onComplete={onComplete}
                   onReopen={onReopen}
                   onArchive={onArchive}
+                  onRestore={onRestore}
                   onEdit={onEdit}
                   onTitleChange={onTitleChange}
                   onAddToToday={onAddToToday}
-                  assignmentInfo={taskAssignmentMap[task.id]}
+                  assignment={getAssignmentForTask(task)}
                 />
               </div>
             ))}

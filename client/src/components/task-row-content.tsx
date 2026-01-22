@@ -3,9 +3,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { GripVertical, Pencil, Trash2, Calendar, Zap, BarChart3, Triangle, Circle, Sparkles, Check, X, HelpCircle, CalendarPlus } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { GripVertical, Pencil, Trash2, Calendar, Zap, BarChart3, Triangle, Circle, Sparkles, Check, X, HelpCircle, CalendarPlus, MoreHorizontal, RotateCcw, Clock } from "lucide-react";
 import { format } from "date-fns";
-import type { Task, FilterMode } from "@shared/schema";
+import type { Task, TaskDayAssignment, FilterMode } from "@shared/schema";
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "";
@@ -32,12 +39,6 @@ interface DragHandleProps {
   listeners?: object;
 }
 
-interface TaskAssignmentInfo {
-  date: string;
-  isToday: boolean;
-  isYesterday: boolean;
-}
-
 interface TaskRowContentProps {
   task: Task;
   isHovered: boolean;
@@ -46,11 +47,15 @@ interface TaskRowContentProps {
   onComplete: (taskId: string) => void;
   onReopen: (taskId: string) => void;
   onArchive: (taskId: string) => void;
+  onRestore?: (taskId: string) => void;
   onEdit: (task: Task) => void;
   onTitleChange?: (taskId: string, newTitle: string) => void;
   onAddToToday?: (taskId: string) => void;
+  onRemoveFromToday?: (taskId: string) => void;
+  onDismissCarryover?: (taskId: string) => void;
+  onCompleteRetroactive?: (taskId: string, date: string) => void;
   dragHandleProps?: DragHandleProps;
-  assignmentInfo?: TaskAssignmentInfo;
+  assignment?: TaskDayAssignment | null;
 }
 
 export function TaskRowContent({
@@ -61,18 +66,41 @@ export function TaskRowContent({
   onComplete,
   onReopen,
   onArchive,
+  onRestore,
   onEdit,
   onTitleChange,
   onAddToToday,
+  onRemoveFromToday,
+  onDismissCarryover,
+  onCompleteRetroactive,
   dragHandleProps,
-  assignmentInfo,
+  assignment,
 }: TaskRowContentProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editValue, setEditValue] = useState(task.title);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   
   const isCompleted = task.status === "completed";
   const isArchived = task.archivedAt !== null;
+  
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  
+  const isAssignedToday = assignment?.date === todayStr;
+  
+  const isCarryover = (() => {
+    if (assignment && assignment.date < todayStr) {
+      return true;
+    }
+    if (!assignment && task.scheduledDate && task.scheduledDate < todayStr) {
+      return true;
+    }
+    return false;
+  })();
+  
+  const carryoverDate = isCarryover 
+    ? (assignment?.date || task.scheduledDate || null)
+    : null;
 
   useEffect(() => {
     if (isEditingTitle && inputRef.current) {
@@ -241,14 +269,17 @@ export function TaskRowContent({
               {formatDate(task.scheduledDate)}
             </Badge>
           )}
-          {assignmentInfo?.isToday && (
+          {isAssignedToday && (
             <Badge variant="default" className="gap-1 text-xs">
               Today
             </Badge>
           )}
-          {assignmentInfo?.isYesterday && (
-            <Badge variant="secondary" className="gap-1 text-xs">
-              Yesterday
+          {isCarryover && carryoverDate && (onDismissCarryover || onCompleteRetroactive) && (
+            <Badge variant="outline" className="gap-1 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              {carryoverDate === format(new Date(Date.now() - 86400000), "yyyy-MM-dd") 
+                ? "From yesterday" 
+                : "From earlier"}
             </Badge>
           )}
         </div>
@@ -256,37 +287,97 @@ export function TaskRowContent({
 
       <div
         className="flex items-center gap-1 transition-opacity"
-        style={{ visibility: isHovered ? "visible" : "hidden" }}
+        style={{ visibility: isHovered || dropdownOpen ? "visible" : "hidden" }}
       >
-        {onAddToToday && !isCompleted && !isArchived && !assignmentInfo?.isToday && task.scheduledDate !== format(new Date(), "yyyy-MM-dd") && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onAddToToday(task.id)}
-            title="Add to Today"
-            data-testid={`button-add-to-today-${task.id}`}
-          >
-            <CalendarPlus className="h-4 w-4" />
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onEdit(task)}
-          data-testid={`button-edit-task-${task.id}`}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
-        {filterMode !== "archived" && !isArchived && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onArchive(task.id)}
-            data-testid={`button-archive-task-${task.id}`}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        )}
+        <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              data-testid={`button-task-menu-${task.id}`}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem 
+              onClick={() => onEdit(task)}
+              data-testid={`menu-edit-task-${task.id}`}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit task
+            </DropdownMenuItem>
+            
+            {!isArchived && (
+              <DropdownMenuItem 
+                onClick={() => onArchive(task.id)}
+                data-testid={`menu-archive-task-${task.id}`}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Archive task
+              </DropdownMenuItem>
+            )}
+            
+            {isArchived && onRestore && (
+              <DropdownMenuItem 
+                onClick={() => onRestore(task.id)}
+                data-testid={`menu-restore-task-${task.id}`}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Restore task
+              </DropdownMenuItem>
+            )}
+            
+            {onAddToToday && !isCompleted && !isArchived && !isAssignedToday && task.scheduledDate !== todayStr && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => onAddToToday(task.id)}
+                  data-testid={`menu-add-to-today-${task.id}`}
+                >
+                  <CalendarPlus className="h-4 w-4 mr-2" />
+                  Add to Today
+                </DropdownMenuItem>
+              </>
+            )}
+            
+            {isAssignedToday && onRemoveFromToday && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => onRemoveFromToday(task.id)}
+                  data-testid={`menu-remove-from-today-${task.id}`}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Remove from Today
+                </DropdownMenuItem>
+              </>
+            )}
+            
+            {isCarryover && carryoverDate && onCompleteRetroactive && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => onCompleteRetroactive(task.id, carryoverDate)}
+                  data-testid={`menu-complete-retroactive-${task.id}`}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Mark complete (yesterday)
+                </DropdownMenuItem>
+              </>
+            )}
+            
+            {isCarryover && onDismissCarryover && (
+              <DropdownMenuItem 
+                onClick={() => onDismissCarryover(task.id)}
+                data-testid={`menu-dismiss-carryover-${task.id}`}
+              >
+                <Clock className="h-4 w-4 mr-2" />
+                Not today
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </>
   );

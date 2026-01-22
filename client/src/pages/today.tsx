@@ -21,16 +21,8 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
-  ChevronRight,
-  Clock,
-  MoreHorizontal
+  ChevronRight
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import type { 
   Task, 
   Domain, 
@@ -612,14 +604,17 @@ export default function TodayPage() {
   };
 
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
-  const [openDropdownTaskId, setOpenDropdownTaskId] = useState<string | null>(null);
 
   const renderTask = (task: Task | CarryoverTask, type: "scheduled" | "assigned" | "carryover") => {
     const isHovered = hoveredTaskId === task.id;
-    const isDropdownOpen = openDropdownTaskId === task.id;
-    const showActions = isHovered || isDropdownOpen;
     const isCarryover = type === "carryover";
     const carryoverTask = isCarryover ? (task as CarryoverTask) : null;
+    
+    const assignment = type === "assigned" 
+      ? { id: `temp-${task.id}`, userId: "", taskId: task.id, date: todayStr, createdAt: new Date() }
+      : type === "carryover" && carryoverTask
+        ? { id: `temp-${task.id}`, userId: "", taskId: task.id, date: carryoverTask.lastVisibleDate, createdAt: new Date() }
+        : null;
     
     return (
       <div
@@ -629,74 +624,21 @@ export default function TodayPage() {
         onMouseEnter={() => setHoveredTaskId(task.id)}
         onMouseLeave={() => setHoveredTaskId(null)}
       >
-        <div className="flex-1 flex items-center gap-2">
-          <TaskRowContent
-            task={task}
-            isHovered={isHovered}
-            showDragHandle={false}
-            filterMode="all"
-            onComplete={(taskId) => completeTaskMutation.mutate({ id: taskId })}
-            onReopen={(taskId) => reopenTaskMutation.mutate(taskId)}
-            onArchive={(taskId) => deleteTaskMutation.mutate(taskId)}
-            onEdit={(t) => setEditingTask(t)}
-            onTitleChange={(taskId, newTitle) => updateTaskMutation.mutate({ taskId, updates: { title: newTitle } })}
-          />
-          {isCarryover && carryoverTask && (
-            <Badge variant="outline" className="text-xs text-muted-foreground shrink-0">
-              <Clock className="h-3 w-3 mr-1" />
-              {carryoverTask.carryoverLabel}
-            </Badge>
-          )}
-        </div>
-        {showActions && (
-          <div className="flex items-center gap-1 shrink-0">
-            {isCarryover && (
-              <DropdownMenu 
-                open={isDropdownOpen} 
-                onOpenChange={(open) => setOpenDropdownTaskId(open ? task.id : null)}
-              >
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-7 w-7"
-                    data-testid={`button-carryover-menu-${task.id}`}
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem 
-                    onClick={() => completeTaskMutation.mutate({ id: task.id, completedAsOf: 'yesterday' })}
-                    data-testid={`button-complete-yesterday-${task.id}`}
-                  >
-                    <Check className="h-4 w-4 mr-2" />
-                    Mark complete (yesterday)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => dismissCarryoverMutation.mutate(task.id)}
-                    data-testid={`button-dismiss-carryover-${task.id}`}
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Not today
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            {type === "assigned" && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => removeFromTodayMutation.mutate(task.id)}
-                title="Remove from Today"
-                data-testid={`button-remove-from-today-${task.id}`}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        )}
+        <TaskRowContent
+          task={task}
+          isHovered={isHovered}
+          showDragHandle={false}
+          filterMode="all"
+          onComplete={(taskId) => completeTaskMutation.mutate({ id: taskId })}
+          onReopen={(taskId) => reopenTaskMutation.mutate(taskId)}
+          onArchive={(taskId) => deleteTaskMutation.mutate(taskId)}
+          onEdit={(t) => setEditingTask(t)}
+          onTitleChange={(taskId, newTitle) => updateTaskMutation.mutate({ taskId, updates: { title: newTitle } })}
+          onRemoveFromToday={(taskId) => removeFromTodayMutation.mutate(taskId)}
+          onDismissCarryover={(taskId) => dismissCarryoverMutation.mutate(taskId)}
+          onCompleteRetroactive={(taskId, _date) => completeTaskMutation.mutate({ id: taskId, completedAsOf: 'yesterday' })}
+          assignment={assignment}
+        />
       </div>
     );
   };

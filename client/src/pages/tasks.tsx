@@ -363,6 +363,7 @@ export default function TasksPage() {
                         onComplete={(id) => completeTaskMutation.mutate(id)}
                         onReopen={(id) => reopenTaskMutation.mutate(id)}
                         onArchive={(id) => archiveTaskMutation.mutate(id)}
+                        onRestore={(id) => restoreTaskMutation.mutate(id)}
                         onEdit={setEditingTask}
                         onTitleChange={handleTitleChange}
                         onAddToToday={(id) => addToTodayMutation.mutate(id)}
