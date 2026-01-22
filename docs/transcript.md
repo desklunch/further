@@ -6,6 +6,24 @@ Reverse chronological history of significant changes and decisions. Each entry i
 
 ---
 
+## 2026-01-22
+
+### Consolidated Task Action Dropdown Menu
+- **19:15 UTC** | Checkpoint `4df81be5` | Consolidated all task actions into dropdown menu
+- **19:15 UTC** | TaskRowContent now contains single MoreHorizontal dropdown with all actions
+- **19:10 UTC** | Added `assignment` prop to TaskRowContent for internal carryover/today detection
+- **19:05 UTC** | Dropdown items: Edit, Archive, Restore, Add to Today, Remove from Today, Mark complete (yesterday), Not Today
+- **19:05 UTC** | Action visibility controlled by task state and callback availability (not view type)
+- **19:00 UTC** | Updated SortableTaskList to pass assignment and onRestore props
+- **18:55 UTC** | Today and Tasks views both use same TaskRowContent with appropriate callbacks
+- **18:50 UTC** | Carryover badge only shows when carryover callbacks provided (Today view only)
+
+### Sticky Domain Headers
+- **18:30 UTC** | Made domain headers sticky on Today view to match Tasks view pattern
+- **18:30 UTC** | Uses top-0 positioning for scroll-aware header behavior
+
+---
+
 ## 2026-01-15
 
 ### Unified Task Row Component with Age Display

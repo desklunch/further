@@ -193,6 +193,29 @@ None. Implementation follows PRD v0.3.1.b-revised-spec.md exactly.
 - Applied to all task arrays: `carryoverTasks`, `scheduledTasks`, `assignedTasks`
 - Sort happens in `domainGroupedContent` useMemo before rendering
 
+### Consolidated Task Action Dropdown (2026-01-22)
+
+| Change | Description | Files Modified |
+|--------|-------------|----------------|
+| Unified dropdown menu | All task actions consolidated into single MoreHorizontal dropdown | `task-row-content.tsx` |
+| Assignment prop | TaskRowContent receives assignment prop for internal state derivation | `task-row-content.tsx`, `sortable-task-list.tsx` |
+| Callback-gated visibility | Actions only appear when corresponding callbacks provided | `task-row-content.tsx` |
+| Carryover badge gating | Carryover badge only shows when carryover callbacks provided (Today view) | `task-row-content.tsx` |
+
+**Dropdown Menu Items:**
+- **Edit** - Always visible, opens TaskEditDrawer
+- **Archive** - Visible for non-archived tasks, archives the task
+- **Restore** - Visible for archived tasks (when onRestore provided)
+- **Add to Today** - Visible when not already assigned today, not scheduled for today
+- **Remove from Today** - Visible when assigned today (Today view only)
+- **Mark complete (yesterday)** - Visible for carryover tasks (Today view only)
+- **Not today** - Visible for carryover tasks (Today view only)
+
+**Implementation Details:**
+- TaskRowContent derives `isCarryover` and `carryoverDate` internally from `assignment.date` and `task.scheduledDate`
+- `isAssignedToday` computed by comparing `assignment.date` to today's date string
+- View-specific behavior achieved through callback availability, not explicit view flags
+
 ## Implementation Log
 
 ### 2026-01-21
