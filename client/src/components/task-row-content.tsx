@@ -194,18 +194,6 @@ export function TaskRowContent({
             >
               {task.title}
             </span>
-            {onTitleChange && !isArchived && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                style={{ visibility: isHovered ? "visible" : "hidden" }}
-                onClick={handleStartEditTitle}
-                data-testid={`button-inline-edit-${task.id}`}
-              >
-                <Pencil className="h-3 w-3" />
-              </Button>
-            )}
           </div>
         )}
 
