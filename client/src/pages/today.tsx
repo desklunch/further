@@ -612,9 +612,12 @@ export default function TodayPage() {
   };
 
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
+  const [openDropdownTaskId, setOpenDropdownTaskId] = useState<string | null>(null);
 
   const renderTask = (task: Task | CarryoverTask, type: "scheduled" | "assigned" | "carryover") => {
     const isHovered = hoveredTaskId === task.id;
+    const isDropdownOpen = openDropdownTaskId === task.id;
+    const showActions = isHovered || isDropdownOpen;
     const isCarryover = type === "carryover";
     const carryoverTask = isCarryover ? (task as CarryoverTask) : null;
     
@@ -645,10 +648,13 @@ export default function TodayPage() {
             </Badge>
           )}
         </div>
-        {isHovered && (
+        {showActions && (
           <div className="flex items-center gap-1 shrink-0">
             {isCarryover && (
-              <DropdownMenu>
+              <DropdownMenu 
+                open={isDropdownOpen} 
+                onOpenChange={(open) => setOpenDropdownTaskId(open ? task.id : null)}
+              >
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
