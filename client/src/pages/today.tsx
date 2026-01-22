@@ -738,32 +738,36 @@ export default function TodayPage() {
             const isCollapsed = collapsedDomains.has(domain.id);
             
             if (isEmpty) {
-              // Render empty domain
+              // Render empty domain with sticky header
               return (
-                <section key={domain.id} className="rounded-lg border p-4" data-testid={`section-empty-domain-${domain.id}`}>
-                  <Collapsible open={!isCollapsed}>
-                    <CollapsibleTrigger 
-                      className="flex items-center gap-2 w-full text-left"
-                      onClick={() => toggleDomainCollapse(domain.id)}
-                    >
+                <section key={domain.id} className="mb-2" data-testid={`section-empty-domain-${domain.id}`}>
+                  <button 
+                    type="button"
+                    className="sticky top-0 z-30 w-full flex items-center justify-between gap-4 border-b bg-muted/50 px-4 py-4 backdrop-blur-sm text-left"
+                    onClick={() => toggleDomainCollapse(domain.id)}
+                    data-testid={`button-toggle-domain-${domain.id}`}
+                  >
+                    <div className="flex items-center gap-2">
                       {isCollapsed ? 
-                        <ChevronRight className="h-5 w-5 text-muted-foreground" /> :
-                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" /> :
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
                       }
-                      <h2 className="text-lg font-medium text-muted-foreground">{domain.name}</h2>
-                      <Badge variant="secondary" className="ml-2">0</Badge>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-3">
+                      <h2 className="text-lg font-semibold text-muted-foreground">{domain.name}</h2>
+                      <Badge variant="secondary" className="text-xs">0</Badge>
+                    </div>
+                  </button>
+                  {!isCollapsed && (
+                    <div className="px-4 py-4">
                       <p className="text-sm text-muted-foreground text-center py-4">
                         No tasks for today
                       </p>
-                    </CollapsibleContent>
-                  </Collapsible>
+                    </div>
+                  )}
                 </section>
               );
             }
             
-            // Render domain with content
+            // Render domain with content using sticky header
             const { habits, carryoverTasks, scheduledTasks, assignedTasks } = content!;
             const allTasks = [...carryoverTasks, ...scheduledTasks, ...assignedTasks];
             const taskCount = allTasks.length;
@@ -771,32 +775,32 @@ export default function TodayPage() {
             const isComplete = isDomainCompleted(content!);
             
             return (
-              <section key={domain.id} className="rounded-lg border p-4 relative" data-testid={`section-domain-${domain.id}`}>
-                {isComplete && (
-                  <div 
-                    className="absolute top-3 right-3"
-                    data-testid={`icon-domain-complete-${domain.id}`}
-                  >
-                    <CheckCircle2 className="h-6 w-6 text-green-500" />
-                  </div>
-                )}
-                <Collapsible open={!isCollapsed}>
-                  <CollapsibleTrigger 
-                    className="flex items-center gap-2 w-full text-left pr-8"
-                    onClick={() => toggleDomainCollapse(domain.id)}
-                  >
+              <section key={domain.id} className="mb-2" data-testid={`section-domain-${domain.id}`}>
+                <button 
+                  type="button"
+                  className="sticky top-0 z-30 w-full flex items-center justify-between gap-4 border-b bg-muted/50 px-4 py-4 backdrop-blur-sm text-left"
+                  onClick={() => toggleDomainCollapse(domain.id)}
+                  data-testid={`button-toggle-domain-${domain.id}`}
+                >
+                  <div className="flex items-center gap-2">
                     {isCollapsed ? 
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" /> :
-                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" /> :
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
                     }
-                    <h2 className="text-lg font-medium">{domain.name}</h2>
-                    {taskCount > 0 && (
-                      <Badge variant="secondary" className="ml-2">
-                        {completedCount}/{taskCount}
-                      </Badge>
+                    <h2 className="text-lg font-semibold">{domain.name}</h2>
+                    <Badge variant="secondary" className="text-xs">
+                      {completedCount}/{taskCount}
+                    </Badge>
+                    {isComplete && (
+                      <CheckCircle2 
+                        className="h-5 w-5 text-green-500"
+                        data-testid={`icon-domain-complete-${domain.id}`}
+                      />
                     )}
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-3 mt-3">
+                  </div>
+                </button>
+                {!isCollapsed && (
+                  <div className="px-4 py-3 space-y-3">
                     {habits.length > 0 && (
                       <div className="space-y-2">
                         {habits.map(renderHabit)}
@@ -810,8 +814,8 @@ export default function TodayPage() {
                         {assignedTasks.map(task => renderTask(task, "assigned"))}
                       </div>
                     )}
-                  </CollapsibleContent>
-                </Collapsible>
+                  </div>
+                )}
               </section>
             );
           })}
