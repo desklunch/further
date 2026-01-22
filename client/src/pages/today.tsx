@@ -727,7 +727,7 @@ export default function TodayPage() {
       <AppHeader />
       
       <main className="flex-1">
-        <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+        <div className="max-w-4xl mx-auto  py-6 ">
           <div className="flex items-center">
             <h1 className="text-2xl font-semibold">
               {format(new Date(), "EEEE, MMMM d")}
@@ -740,7 +740,7 @@ export default function TodayPage() {
             if (isEmpty) {
               // Render empty domain with sticky header
               return (
-                <section key={domain.id} className="mb-2" data-testid={`section-empty-domain-${domain.id}`}>
+                <section key={domain.id} className="" data-testid={`section-empty-domain-${domain.id}`}>
                   <button 
                     type="button"
                     className="sticky top-0 z-30 w-full flex items-center justify-between gap-4 border-b bg-muted/50 px-4 py-4 backdrop-blur-sm text-left"
@@ -775,7 +775,7 @@ export default function TodayPage() {
             const isComplete = isDomainCompleted(content!);
             
             return (
-              <section key={domain.id} className="mb-2" data-testid={`section-domain-${domain.id}`}>
+              <section key={domain.id} className="" data-testid={`section-domain-${domain.id}`}>
                 <button 
                   type="button"
                   className="sticky top-0 z-30 w-full flex items-center justify-between gap-4 border-b bg-muted/50 px-4 py-4 backdrop-blur-sm text-left"
