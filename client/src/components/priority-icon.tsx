@@ -11,10 +11,10 @@ export function PriorityIcon({
 }: PriorityIconProps) {
   const filledColor = "currentColor";
   const filledOpacity = 1;
-  const unfilledOpacity = 0.25;
+  const unfilledOpacity = 0.3;
 
   return (
-    <div className="whitespace-nowrap inline-flex items-center rounded-sm border px-1 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground">
+    <div className="whitespace-nowrap inline-flex items-center rounded-sm p-0 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ">
       <svg
         width="10"
         height="12"
@@ -28,7 +28,7 @@ export function PriorityIcon({
           x="0"
           y="0"
           width="10"
-          height="2.5"
+          height="3"
           rx="0.5"
           fill={filledColor}
           opacity={level >= 3 ? filledOpacity : unfilledOpacity}
@@ -37,7 +37,7 @@ export function PriorityIcon({
           x="0"
           y="4.5"
           width="10"
-          height="2.5"
+          height="3"
           rx="0.5"
           fill={filledColor}
           opacity={level >= 2 ? filledOpacity : unfilledOpacity}
@@ -46,7 +46,7 @@ export function PriorityIcon({
           x="0"
           y="9"
           width="10"
-          height="2.5"
+          height="3"
           rx="0.5"
           fill={filledColor}
           opacity={level >= 1 ? filledOpacity : unfilledOpacity}

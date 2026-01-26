@@ -212,7 +212,14 @@ export function TaskRowContent({
             </Button>
           </div>
         ) : (
-          <div className="flex items-center gap-1 w-full md:flex-1">
+          <div className="flex items-center gap-2 w-full md:flex-1">
+            {task.priority && (
+              <PriorityIcon 
+                level={task.priority} 
+                className="h-4 w-auto text-muted-foreground" 
+                data-testid={`icon-priority-${task.id}`}
+              />
+            )}
             <span
               className={`flex-1 text-base md:truncate cursor-pointer ${
                 isCompleted || isArchived
@@ -269,17 +276,11 @@ export function TaskRowContent({
           {task.effortPoints != null && (
             <EffortIcon 
               level={task.effortPoints} 
-              className="h-3 w-auto text-chart-3" 
+              className="h-3 w-auto" 
               data-testid={`icon-effort-${task.id}`}
             />
           )}
-          {task.priority && (
-            <PriorityIcon 
-              level={task.priority} 
-              className="h-3 w-auto text-chart-4" 
-              data-testid={`icon-priority-${task.id}`}
-            />
-          )}
+   
           <Badge variant="secondary" className="gap-1 text-xs px-1">
             {task.valence === -1 && <Triangle className="h-3 w-3" />}
             {task.valence === 0 && <Circle className="h-3 w-3" />}
